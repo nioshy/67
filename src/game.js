@@ -32,4 +32,33 @@ if (touchControls) {
     touchControls.addEventListener("dblclick", event => {
         event.preventDefault();
     });
+const touchButtons = document.querySelectorAll(".touch-controls button");
+
+touchButtons.forEach(button => {
+    button.addEventListener(
+        "pointerdown",
+        event => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const direction = button.dataset.dir;
+
+            if (direction === "up") {
+                handleMove(0, -1);
+            }
+
+            if (direction === "down") {
+                handleMove(0, 1);
+            }
+
+            if (direction === "left") {
+                handleMove(-1, 0);
+            }
+
+            if (direction === "right") {
+                handleMove(1, 0);
+            }
+        }
+    );
+});
 }
