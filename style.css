@@ -10,6 +10,7 @@ body {
 
 html {
     background: #090d12;
+    touch-action: manipulation;
 }
 
 body {
@@ -23,6 +24,7 @@ body {
         max(8px, env(safe-area-inset-left));
 
     color: #fff;
+
     background:
         radial-gradient(
             circle at top,
@@ -43,16 +45,17 @@ body {
 
 button {
     font: inherit;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* Main game area */
+/* Main layout */
 
 .game-container {
-    width: min(100%, 760px);
+    width: min(100%, 1050px);
     margin: 0 auto;
 }
 
@@ -60,10 +63,10 @@ header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 20px;
 
-    margin-bottom: 10px;
-    padding: 10px 14px;
+    margin-bottom: 12px;
+    padding: 12px 18px;
 
     border: 2px solid #354250;
     border-radius: 14px;
@@ -78,7 +81,7 @@ header {
 h1 {
     margin: 0;
 
-    font-size: clamp(21px, 4vw, 36px);
+    font-size: clamp(24px, 4vw, 42px);
     font-style: italic;
     letter-spacing: -1px;
     line-height: 1.05;
@@ -91,19 +94,19 @@ h1 span {
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 #timer,
 #stars-display {
-    min-width: 98px;
-    padding: 9px 11px;
+    min-width: 110px;
+    padding: 10px 14px;
 
     border: 2px solid #354250;
     border-radius: 10px;
 
     text-align: center;
-    font-size: 17px;
+    font-size: 20px;
     font-weight: 800;
     white-space: nowrap;
 }
@@ -141,8 +144,9 @@ canvas {
 
     width: 100%;
     height: auto;
+
     max-width: 100%;
-    max-height: none;
+    max-height: 100%;
 
     background: #111;
 
@@ -219,7 +223,7 @@ canvas {
     background: #4a3a00;
 }
 
-/* General buttons */
+/* Buttons */
 
 button {
     padding: 12px 22px;
@@ -236,8 +240,6 @@ button {
     cursor: pointer;
 
     box-shadow: 0 6px 0 #8c6900;
-
-    -webkit-tap-highlight-color: transparent;
 }
 
 button:active {
@@ -249,6 +251,14 @@ button:active {
     color: #fff;
     background: #263545;
     box-shadow: 0 5px 0 #090d12;
+}
+
+.instructions {
+    margin: 12px 0 0;
+
+    color: #aab5c2;
+
+    text-align: center;
 }
 
 /* Touch controls */
@@ -273,6 +283,7 @@ button:active {
     border-radius: 15px;
 
     color: #fff;
+
     background:
         linear-gradient(
             #35485a,
@@ -283,15 +294,18 @@ button:active {
     font-weight: 900;
     line-height: 1;
 
-    touch-action: manipulation;
+    box-shadow: 0 5px 0 #05080b;
+
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
-
-    box-shadow: 0 5px 0 #05080b;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .touch-controls button:active {
     transform: translateY(3px);
+
     background:
         linear-gradient(
             #4b6075,
@@ -301,21 +315,12 @@ button:active {
     box-shadow: 0 2px 0 #05080b;
 }
 
-.instructions {
-    margin: 10px 0 0;
-
-    color: #aab5c2;
-
-    text-align: center;
-    font-size: 14px;
-}
-
 /* Gallery */
 
 .gallery-screen {
     position: fixed;
     inset: 0;
-    z-index: 20;
+    z-index: 100;
 
     overflow-y: auto;
 
@@ -450,7 +455,7 @@ button:active {
 .photo-viewer {
     position: fixed;
     inset: 0;
-    z-index: 30;
+    z-index: 110;
 
     display: grid;
     place-items: center;
@@ -487,6 +492,7 @@ button:active {
 
 .photo-close-button {
     position: fixed;
+
     top: max(18px, env(safe-area-inset-top));
     right: max(18px, env(safe-area-inset-right));
 
@@ -503,9 +509,9 @@ button:active {
     line-height: 1;
 }
 
-/* Tablets, phones and touch screens */
+/* Touch devices */
 
-@media (pointer: coarse), (max-width: 900px) {
+@media (pointer: coarse) {
     body {
         display: block;
     }
@@ -543,218 +549,6 @@ button:active {
         font-size: 16px;
     }
 
-    /*
-       This stretches the controls to the physical
-       left and right edges of the screen.
-    */
-    .touch-controls {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-
-        width: 100vw;
-
-        margin-top: 12px;
-        margin-left: calc(50% - 50vw);
-
-        padding:
-            4px
-            max(14px, env(safe-area-inset-right))
-            8px
-            max(14px, env(safe-area-inset-left));
-
-        gap: 40px;
-    }
-
-    .instructions {
-        display: none;
-    }
-
-    .gallery-card img,
-    .locked-placeholder {
-        height: 150px;
-    }
-}
-
-/* Smaller phones */
-
-@media (max-width: 500px) {
-    .touch-side {
-        grid-template-columns: 66px;
-        grid-template-rows: repeat(3, 52px);
-        gap: 7px;
-    }
-
-    .touch-controls button {
-        width: 66px;
-        height: 52px;
-
-        font-size: 25px;
-    }
-
-    .message-box {
-        padding: 20px;
-    }
-
-    .message-box h2 {
-        font-size: 34px;
-    }
-/* iPad/tablet landscape layout */
-@media (pointer: coarse) and (orientation: landscape) {
-    html,
-    body {
-        width: 100%;
-        height: 100%;
-        min-height: 100%;
-        overflow: hidden;
-    }
-
-    body {
-        display: block;
-
-        padding:
-            max(5px, env(safe-area-inset-top))
-            max(100px, env(safe-area-inset-right))
-            max(5px, env(safe-area-inset-bottom))
-            max(100px, env(safe-area-inset-left));
-    }
-
-    .game-container {
-        display: grid;
-        grid-template-rows: auto minmax(0, 1fr);
-
-        width: 100%;
-        height: calc(
-            100svh
-            - max(5px, env(safe-area-inset-top))
-            - max(5px, env(safe-area-inset-bottom))
-        );
-
-        margin: 0 auto;
-    }
-
-    header {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-
-        margin-bottom: 5px;
-        padding: 5px 10px;
-
-        border-radius: 10px;
-    }
-
-    h1 {
-        font-size: clamp(16px, 2.2vw, 25px);
-        line-height: 1;
-        white-space: nowrap;
-    }
-
-    .header-actions {
-        flex-wrap: nowrap;
-        gap: 6px;
-    }
-
-    #timer,
-    #stars-display {
-        min-width: 78px;
-        padding: 5px 8px;
-
-        font-size: 14px;
-    }
-
-    .secondary-button {
-        padding: 6px 10px;
-        font-size: 14px;
-    }
-
-    /*
-       The canvas keeps its 960 × 640 ratio.
-       Its maximum size is determined by both
-       the available width and available height.
-    */
-    .canvas-container {
-        align-self: center;
-        justify-self: center;
-
-        width: auto;
-        height: auto;
-
-        max-width: 100%;
-        max-height: 100%;
-
-        aspect-ratio: 3 / 2;
-
-        border-width: 2px;
-        border-radius: 10px;
-    }
-
-    canvas {
-        display: block;
-
-        width: auto;
-        height: auto;
-
-        max-width: 100%;
-        max-height: calc(100svh - 58px);
-
-        aspect-ratio: 3 / 2;
-    }
-
-    /*
-       Controls are fixed to the two ends of the screen,
-       so they do not take vertical space away from the maze.
-    */
-    .touch-controls {
-        position: fixed;
-        inset: 0;
-        z-index: 15;
-
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-
-        width: 100%;
-        height: 100%;
-
-        margin: 0;
-        padding:
-            max(8px, env(safe-area-inset-top))
-            max(10px, env(safe-area-inset-right))
-            max(8px, env(safe-area-inset-bottom))
-            max(10px, env(safe-area-inset-left));
-
-        pointer-events: none;
-    }
-
-    .touch-side {
-        display: grid;
-        grid-template-columns: 72px;
-        grid-template-rows: repeat(3, 56px);
-        gap: 8px;
-
-        pointer-events: auto;
-    }
-
-    .touch-controls button {
-        width: 72px;
-        height: 56px;
-        padding: 0;
-
-        border-radius: 14px;
-
-        font-size: 27px;
-
-        opacity: 0.9;
-    }
-
-    .instructions {
-        display: none;
-    }
-}
-/* Reliable touch controls on iPad and phones */
-@media (pointer: coarse) {
     .touch-controls {
         position: fixed;
         inset: 0;
@@ -776,11 +570,6 @@ button:active {
         position: fixed;
         bottom: max(18px, env(safe-area-inset-bottom));
 
-        display: grid;
-        grid-template-columns: 76px;
-        grid-template-rows: repeat(3, 58px);
-        gap: 9px;
-
         pointer-events: auto;
         touch-action: none;
     }
@@ -793,23 +582,174 @@ button:active {
         right: max(18px, env(safe-area-inset-right));
     }
 
-    .touch-controls button {
-        width: 76px;
-        height: 58px;
-        padding: 0;
+    .instructions {
+        display: none;
+    }
 
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-touch-callout: none;
-        -webkit-tap-highlight-color: transparent;
+    .gallery-card img,
+    .locked-placeholder {
+        height: 150px;
     }
 }
+
+/* iPad and tablet landscape */
+
 @media (pointer: coarse) and (orientation: landscape) {
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+
+        overflow: hidden;
+    }
+
+    body {
+        padding:
+            max(4px, env(safe-area-inset-top))
+            max(92px, env(safe-area-inset-right))
+            max(4px, env(safe-area-inset-bottom))
+            max(92px, env(safe-area-inset-left));
+    }
+
+    .game-container {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+
+        width: 100%;
+        height: calc(
+            100svh
+            - max(4px, env(safe-area-inset-top))
+            - max(4px, env(safe-area-inset-bottom))
+        );
+
+        margin: 0 auto;
+    }
+
+    header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+
+        min-height: 38px;
+
+        margin: 0 0 4px;
+        padding: 4px 8px;
+
+        border-radius: 9px;
+    }
+
+    h1 {
+        font-size: clamp(14px, 1.9vw, 22px);
+        line-height: 1;
+        white-space: nowrap;
+        text-align: left;
+    }
+
+    .header-actions {
+        flex-wrap: nowrap;
+        gap: 5px;
+    }
+
+    #timer,
+    #stars-display {
+        min-width: 70px;
+        padding: 4px 7px;
+
+        font-size: 13px;
+    }
+
+    .secondary-button {
+        padding: 5px 9px;
+        font-size: 13px;
+    }
+
+    /*
+       The canvas uses only the vertical space remaining
+       below the header and preserves its 960 × 640 ratio.
+    */
+    .canvas-container {
+        align-self: center;
+        justify-self: center;
+
+        width: min(
+            calc((100svh - 50px) * 1.5),
+            100%
+        );
+
+        height: auto;
+        max-height: calc(100svh - 50px);
+
+        aspect-ratio: 3 / 2;
+
+        overflow: hidden;
+
+        border-width: 2px;
+        border-radius: 9px;
+    }
+
+    canvas {
+        display: block;
+
+        width: 100%;
+        height: 100%;
+
+        max-width: 100%;
+        max-height: 100%;
+
+        aspect-ratio: 3 / 2;
+        object-fit: contain;
+    }
+
     .touch-side {
         top: 50%;
         bottom: auto;
+
+        grid-template-columns: 70px;
+        grid-template-rows: repeat(3, 54px);
+        gap: 8px;
+
         transform: translateY(-50%);
     }
+
+    .touch-left {
+        left: max(10px, env(safe-area-inset-left));
+    }
+
+    .touch-right {
+        right: max(10px, env(safe-area-inset-right));
+    }
+
+    .touch-controls button {
+        width: 70px;
+        height: 54px;
+
+        font-size: 25px;
+    }
 }
+
+/* Smaller phones */
+
+@media (pointer: coarse) and (max-width: 500px) {
+    .touch-side {
+        grid-template-columns: 66px;
+        grid-template-rows: repeat(3, 52px);
+        gap: 7px;
+    }
+
+    .touch-controls button {
+        width: 66px;
+        height: 52px;
+
+        font-size: 25px;
+    }
+
+    .message-box {
+        padding: 20px;
+    }
+
+    .message-box h2 {
+        font-size: 34px;
+    }
 }
