@@ -10,3 +10,26 @@ function loop(now){const dt=Math.min((now-previous)/1000,.05);previous=now;updat
 addEventListener("keydown",e=>{const k=e.key.toLowerCase(),map={arrowup:"up",w:"up",arrowdown:"down",s:"down",arrowleft:"left",a:"left",arrowright:"right",d:"right"};if(map[k]){e.preventDefault();move(map[k]);}if(k==="r")generateLevel();if(k==="escape"){viewer.classList.add("hidden");gallery.classList.add("hidden");}});document.querySelectorAll("[data-move]").forEach(b=>b.addEventListener("pointerdown",e=>{e.preventDefault();move(b.dataset.move);}));restart.onclick=generateLevel;
 function renderGallery(){galleryGrid.innerHTML="";galleryProgress.textContent=`${achievements.unlockedCount} of ${achievements.photos.length} unlocked — ${achievements.getRemainingCount()} remaining`;galleryStars.textContent=achievements.unlockedCount>=achievements.photos.length?`⭐ ${achievements.totalStars} — All memories unlocked!`:`⭐ ${achievements.totalStars} — ${achievements.getStarsTowardNextPhoto()} of ${achievements.starsPerPhoto} stars toward the next memory`;achievements.photos.forEach((photo,i)=>{const card=document.createElement("article");card.className="gallery-card";if(achievements.isUnlocked(i)){const img=document.createElement("img");img.src=photo.file;img.alt=photo.title;img.onerror=()=>{img.style.display="none";};const h=document.createElement("h3");h.textContent=photo.title;card.append(img,h);card.onclick=()=>{largePhoto.src=photo.file;largeTitle.textContent=photo.title;largeCaption.textContent=photo.caption;viewer.classList.remove("hidden");};}else{card.classList.add("locked");const p=document.createElement("div");p.className="locked-placeholder";p.textContent=`Memory ${i+1}`;const h=document.createElement("h3");h.textContent="Locked";card.append(p,h);}galleryGrid.append(card);});}
 galleryButton.onclick=()=>{renderGallery();gallery.classList.remove("hidden");};closeGallery.onclick=()=>gallery.classList.add("hidden");closePhoto.onclick=()=>viewer.classList.add("hidden");viewer.onclick=e=>{if(e.target===viewer)viewer.classList.add("hidden");};updateStars();generateLevel();requestAnimationFrame(loop);
+const touchControls = document.querySelector(".touch-controls");
+
+if (touchControls) {
+    touchControls.addEventListener(
+        "touchstart",
+        event => {
+            event.preventDefault();
+        },
+        { passive: false }
+    );
+
+    touchControls.addEventListener(
+        "touchmove",
+        event => {
+            event.preventDefault();
+        },
+        { passive: false }
+    );
+
+    touchControls.addEventListener("dblclick", event => {
+        event.preventDefault();
+    });
+}

@@ -3,7 +3,7 @@
   "short_name": "67 Kid",
   "start_url": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "landscape-primary",
   "background_color": "#111827",
   "theme_color": "#111827",
   "icons": [
