@@ -1,78 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#090d12">
-  <title>Arthur & Valder's 67 Kid: Maze Escape</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="manifest" href="./manifest.webmanifest">
+    <meta charset="UTF-8">
 
-<link rel="apple-touch-icon" href="./assets/icon-180.png">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    >
 
-<link rel="icon" type="image/png" href="./assets/icon-180.png">
+    <title>Arthur & Valder's 67 Kid: Maze Escape</title>
 
-<meta name="theme-color" content="#111827">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#111827">
+
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="black-translucent"
+    >
+
+    <meta
+        name="apple-mobile-web-app-title"
+        content="67 Kid"
+    >
+
+    <link
+        rel="stylesheet"
+        href="./style.css"
+    >
+
+    <link
+        rel="manifest"
+        href="./manifest.webmanifest"
+    >
+
+    <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="./assets/icon-180.png"
+    >
+
+    <link
+        rel="icon"
+        type="image/png"
+        sizes="180x180"
+        href="./assets/icon-180.png"
+    >
 </head>
+
 <body>
-  <main class="game-container">
-    <header>
-      <h1><span>Arthur & Valder's 67 Kid:</span> Maze Escape</h1>
-      <div class="header-actions">
-        <div id="stars-display">⭐ 0</div>
-        <button id="gallery-button" class="secondary-button">Gallery</button>
-        <div id="timer">Time: 0.0</div>
-      </div>
-    </header>
+    <main class="game-container">
+        <header>
+            <h1>
+                <span>Arthur & Valder's 67 Kid:</span>
+                Maze Escape
+            </h1>
 
-    <div class="canvas-container">
-      <canvas id="game" width="960" height="640"></canvas>
-      <div id="overlay" class="overlay hidden">
-        <div class="message-box">
-          <h2 id="message-title">Game Over</h2>
-          <p id="message-text"></p>
-          <p id="star-message" class="star-message hidden"></p>
-          <p id="unlock-message" class="unlock-message hidden"></p>
-          <button id="restart-button">Play Again</button>
+            <div class="header-actions">
+                <div id="stars-display">
+                    ⭐ 0
+                </div>
+
+                <button
+                    id="gallery-button"
+                    class="secondary-button"
+                >
+                    Gallery
+                </button>
+
+                <div id="timer">
+                    Time: 0.0
+                </div>
+            </div>
+        </header>
+
+        <div class="canvas-container">
+            <canvas
+                id="game"
+                width="960"
+                height="640"
+            ></canvas>
+
+            <div
+                id="overlay"
+                class="overlay hidden"
+            >
+                <div class="message-box">
+                    <h2 id="message-title">
+                        Game Over
+                    </h2>
+
+                    <p id="message-text"></p>
+
+                    <p
+                        id="star-message"
+                        class="star-message hidden"
+                    ></p>
+
+                    <p
+                        id="unlock-message"
+                        class="unlock-message hidden"
+                    ></p>
+
+                    <button id="restart-button">
+                        Play Again
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <div class="mobile-controls" aria-label="Touch controls">
-      <button data-move="up">▲</button>
-      <button data-move="left">◀</button>
-      <button data-move="down">▼</button>
-      <button data-move="right">▶</button>
-    </div>
+        <div class="touch-controls">
+            <div class="touch-side touch-left">
+                <button
+                    data-dir="up"
+                    aria-label="Move up"
+                >
+                    ▲
+                </button>
 
-    <p class="instructions">Arrow keys/WASD on computer. Touch controls on iPad. Press R for a new maze.</p>
-  </main>
+                <button
+                    data-dir="left"
+                    aria-label="Move left"
+                >
+                    ◀
+                </button>
 
-  <section id="gallery-screen" class="gallery-screen hidden">
-    <div class="gallery-panel">
-      <div class="gallery-header">
-        <div>
-          <h2>Holiday Gallery</h2>
-          <p id="gallery-progress"></p>
-          <p id="gallery-stars"></p>
+                <button
+                    data-dir="down"
+                    aria-label="Move down"
+                >
+                    ▼
+                </button>
+            </div>
+
+            <div class="touch-side touch-right">
+                <button
+                    data-dir="up"
+                    aria-label="Move up"
+                >
+                    ▲
+                </button>
+
+                <button
+                    data-dir="right"
+                    aria-label="Move right"
+                >
+                    ▶
+                </button>
+
+                <button
+                    data-dir="down"
+                    aria-label="Move down"
+                >
+                    ▼
+                </button>
+            </div>
         </div>
-        <button id="close-gallery-button" class="secondary-button">Close</button>
-      </div>
-      <div id="gallery-grid" class="gallery-grid"></div>
-    </div>
-  </section>
 
-  <section id="photo-viewer" class="photo-viewer hidden">
-    <button id="close-photo-button" class="photo-close-button">×</button>
-    <img id="large-photo" alt="Unlocked holiday memory">
-    <h2 id="large-photo-title"></h2>
-    <p id="large-photo-caption"></p>
-  </section>
+        <p class="instructions">
+            Arrow keys/WASD on computer. Touch controls on iPad.
+            Press R for a new maze.
+        </p>
+    </main>
 
-  <script type="module" src="src/game.js"></script>
+    <section
+        id="gallery-screen"
+        class="gallery-screen hidden"
+    >
+        <div class="gallery-panel">
+            <div class="gallery-header">
+                <div>
+                    <h2>Holiday Gallery</h2>
+                    <p id="gallery-progress"></p>
+                    <p id="gallery-stars"></p>
+                </div>
+
+                <button
+                    id="close-gallery-button"
+                    class="secondary-button"
+                >
+                    Close
+                </button>
+            </div>
+
+            <div
+                id="gallery-grid"
+                class="gallery-grid"
+            ></div>
+        </div>
+    </section>
+
+    <section
+        id="photo-viewer"
+        class="photo-viewer hidden"
+    >
+        <button
+            id="close-photo-button"
+            class="photo-close-button"
+        >
+            ×
+        </button>
+
+        <img
+            id="large-photo"
+            alt="Unlocked holiday memory"
+        >
+
+        <h2 id="large-photo-title"></h2>
+        <p id="large-photo-caption"></p>
+    </section>
+
+    <script
+        type="module"
+        src="./src/game.js"
+    ></script>
 </body>
 </html>
