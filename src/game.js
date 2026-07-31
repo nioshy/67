@@ -110,10 +110,6 @@ const game = {
     exit: null,
     carrot: null,
 
-    /*
-     * Carrot collected this maze,
-     * but not banked until escape.
-     */
     pendingCarrot: false,
 
     bananas: [],
@@ -134,7 +130,9 @@ const game = {
 
     invisible: false,
     invisibilityTimer: 0,
-    lastSeenPosition: null
+    lastSeenPosition: null,
+
+    teleportPauseStart: 0
 };
 
 let previous =
@@ -149,6 +147,8 @@ let powerupBar = null;
 
 const powerupButtons =
     new Map();
+
+let teleportPrompt = null;
 
 
 function createPowerupUI() {
@@ -221,6 +221,63 @@ function createPowerupUI() {
             font-weight: 900;
         }
 
+        #teleport-prompt {
+            position: absolute;
+            left: 50%;
+            top: 18px;
+            z-index: 75;
+
+            transform: translateX(-50%);
+
+            width: min(440px, 88%);
+
+            padding: 12px 16px;
+
+            border: 3px solid #9a6cff;
+            border-radius: 16px;
+
+            color: #fff;
+            background: rgba(25, 12, 45, 0.96);
+
+            text-align: center;
+            font-size: 18px;
+            font-weight: 900;
+
+            box-shadow:
+                0 12px 35px
+                rgba(0, 0, 0, 0.65);
+
+            pointer-events: auto;
+        }
+
+        #teleport-prompt small {
+            display: block;
+
+            margin-top: 5px;
+
+            color: #d8c8ff;
+
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        #cancel-teleport-button {
+            margin-top: 9px;
+
+            padding: 7px 13px;
+
+            color: #fff;
+            background: #493666;
+
+            font-size: 12px;
+
+            box-shadow: 0 3px 0 #160c24;
+        }
+
+        .teleport-selecting {
+            cursor: crosshair;
+        }
+
         @media (pointer: coarse) and (orientation: landscape) {
             #powerup-bar {
                 bottom: 5px;
@@ -233,6 +290,25 @@ function createPowerupUI() {
                 height: 38px;
 
                 font-size: 20px;
+            }
+
+            #teleport-prompt {
+                top: 8px;
+
+                width: min(390px, 65%);
+
+                padding: 8px 12px;
+
+                font-size: 14px;
+            }
+
+            #teleport-prompt small {
+                font-size: 10px;
+            }
+
+            #cancel-teleport-button {
+                margin-top: 5px;
+                padding: 5px 10px;
             }
         }
     `;
@@ -298,7 +374,59 @@ function createPowerupUI() {
         powerupBar
     );
 
+    createTeleportPrompt();
+
     updatePowerupUI();
+}
+
+
+function createTeleportPrompt() {
+    teleportPrompt =
+        document.createElement(
+            "div"
+        );
+
+    teleportPrompt.id =
+        "teleport-prompt";
+
+    teleportPrompt.classList.add(
+        "hidden"
+    );
+
+    teleportPrompt.innerHTML = `
+        🌀 WHERE DO YOU WANT TO TELEPORT?
+        <small>
+            Tap any open floor tile in the maze.
+        </small>
+        <button
+            id="cancel-teleport-button"
+            type="button"
+        >
+            CANCEL
+        </button>
+    `;
+
+    const canvasContainer =
+        document.querySelector(
+            ".canvas-container"
+        );
+
+    canvasContainer.append(
+        teleportPrompt
+    );
+
+    const cancelButton =
+        $("cancel-teleport-button");
+
+    cancelButton.addEventListener(
+        "pointerdown",
+        event => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            cancelTeleport();
+        }
+    );
 }
 
 
@@ -449,7 +577,7 @@ function placeCarrot() {
 
 
 /* =========================================================
-   RESET POWER-UP EFFECTS
+   RUN EFFECTS
    ========================================================= */
 
 function resetRunEffects() {
@@ -467,9 +595,14 @@ function resetRunEffects() {
     game.lastSeenPosition =
         null;
 
+    game.teleportPauseStart =
+        0;
+
     game.player.resetEffects();
 
     game.enemy.resetEffects();
+
+    hideTeleportPrompt();
 }
 
 
@@ -490,10 +623,6 @@ function generateLevel() {
         "hidden"
     );
 
-    /*
-     * A carrot from a failed /
-     * abandoned maze is lost.
-     */
     game.pendingCarrot =
         false;
 
@@ -620,9 +749,9 @@ function usePowerup(
         return;
     }
 
-    /*
-     * BANANA
-     */
+
+    /* Banana */
+
     if (
         itemId ===
         "banana"
@@ -641,12 +770,15 @@ function usePowerup(
             x,
             y
         });
+
+        achievements.useItem(
+            itemId
+        );
     }
 
 
-    /*
-     * TURBO SHOES
-     */
+    /* Turbo shoes */
+
     else if (
         itemId ===
         "turboShoes"
@@ -655,12 +787,15 @@ function usePowerup(
             .activateTurbo(
                 8
             );
+
+        achievements.useItem(
+            itemId
+        );
     }
 
 
-    /*
-     * FREEZE BOMB
-     */
+    /* Freeze */
+
     else if (
         itemId ===
         "freezeBomb"
@@ -668,21 +803,19 @@ function usePowerup(
         game.enemy.freeze(
             3
         );
+
+        achievements.useItem(
+            itemId
+        );
     }
 
 
-    /*
-     * SHIELD
-     */
+    /* Shield */
+
     else if (
         itemId ===
         "shield"
     ) {
-        /*
-         * Don't waste another
-         * shield if one is
-         * already active.
-         */
         if (
             game.shieldActive
         ) {
@@ -691,12 +824,15 @@ function usePowerup(
 
         game.shieldActive =
             true;
+
+        achievements.useItem(
+            itemId
+        );
     }
 
 
-    /*
-     * INVISIBILITY
-     */
+    /* Invisibility */
+
     else if (
         itemId ===
         "invisibilityCloak"
@@ -707,10 +843,6 @@ function usePowerup(
         game.invisibilityTimer =
             5;
 
-        /*
-         * Toilet remembers the
-         * last place it saw us.
-         */
         game.lastSeenPosition = {
             x:
                 Math.round(
@@ -722,116 +854,336 @@ function usePowerup(
                     game.player.y
                 )
         };
+
+        achievements.useItem(
+            itemId
+        );
     }
 
 
-    /*
-     * TELEPORT
-     */
+    /* Teleport */
+
     else if (
         itemId ===
         "teleport"
     ) {
-        teleportPlayer();
+        beginTeleport();
+
+        /*
+         * Do NOT consume teleport yet.
+         * It is consumed only after a
+         * destination is selected.
+         */
+        return;
     }
 
+    updatePowerupUI();
+}
+
+
+/* =========================================================
+   TELEPORT
+   ========================================================= */
+
+function beginTeleport() {
+    if (
+        game.state !==
+        "playing"
+    ) {
+        return;
+    }
 
     /*
-     * Consume item only after
-     * successful activation.
+     * Freeze the entire chase.
      */
-    achievements.useItem(
-        itemId
+    game.state =
+        "teleporting";
+
+    game.teleportPauseStart =
+        performance.now();
+
+    teleportPrompt.classList.remove(
+        "hidden"
+    );
+
+    canvas.classList.add(
+        "teleport-selecting"
     );
 
     updatePowerupUI();
 }
 
 
-function teleportPlayer() {
-    const possibleTiles = [];
-
-    const enemyX =
-        Math.round(
-            game.enemy.x
+function hideTeleportPrompt() {
+    if (teleportPrompt) {
+        teleportPrompt.classList.add(
+            "hidden"
         );
-
-    const enemyY =
-        Math.round(
-            game.enemy.y
-        );
-
-    for (
-        let y = 0;
-        y < maze.height;
-        y++
-    ) {
-        for (
-            let x = 0;
-            x < maze.width;
-            x++
-        ) {
-            if (
-                !maze.isFloor(
-                    x,
-                    y
-                )
-            ) {
-                continue;
-            }
-
-            const distanceFromEnemy =
-                Math.abs(
-                    x - enemyX
-                ) +
-                Math.abs(
-                    y - enemyY
-                );
-
-            if (
-                distanceFromEnemy <
-                6
-            ) {
-                continue;
-            }
-
-            possibleTiles.push({
-                x,
-                y
-            });
-        }
     }
 
-    if (
-        possibleTiles.length ===
-        0
-    ) {
-        return;
-    }
-
-    const destination =
-        possibleTiles[
-            Math.floor(
-                Math.random() *
-                possibleTiles.length
-            )
-        ];
-
-    resetEntity(
-        game.player,
-        destination.x,
-        destination.y
-    );
-
-    renderer.triggerShake(
-        6,
-        0.2
+    canvas.classList.remove(
+        "teleport-selecting"
     );
 }
 
 
+function cancelTeleport() {
+    if (
+        game.state !==
+        "teleporting"
+    ) {
+        return;
+    }
+
+    resumeAfterTeleportPause();
+
+    game.state =
+        "playing";
+
+    hideTeleportPrompt();
+
+    updatePowerupUI();
+}
+
+
+function resumeAfterTeleportPause() {
+    if (
+        !game.teleportPauseStart
+    ) {
+        return;
+    }
+
+    /*
+     * Move startTime forward by
+     * however long the player spent
+     * choosing a destination.
+     *
+     * This means the maze timer also
+     * pauses during teleport selection.
+     */
+    const pausedFor =
+        performance.now() -
+        game.teleportPauseStart;
+
+    game.startTime +=
+        pausedFor;
+
+    game.teleportPauseStart =
+        0;
+}
+
+
+function finishTeleport(
+    x,
+    y
+) {
+    if (
+        game.state !==
+        "teleporting"
+    ) {
+        return;
+    }
+
+    if (
+        achievements
+            .getItemCount(
+                "teleport"
+            ) <= 0
+    ) {
+        cancelTeleport();
+        return;
+    }
+
+    /*
+     * Only floor tiles can be used.
+     */
+    if (
+        !maze.isFloor(
+            x,
+            y
+        )
+    ) {
+        return;
+    }
+
+    /*
+     * Don't teleport directly onto
+     * the toilet.
+     */
+    const enemyDistance =
+        Math.hypot(
+            x - game.enemy.x,
+            y - game.enemy.y
+        );
+
+    if (
+        enemyDistance <
+        1.5
+    ) {
+        return;
+    }
+
+    /*
+     * Don't teleport onto the exact
+     * tile we're already standing on.
+     */
+    if (
+        x ===
+            Math.round(
+                game.player.x
+            ) &&
+        y ===
+            Math.round(
+                game.player.y
+            )
+    ) {
+        return;
+    }
+
+    /*
+     * Successful teleport.
+     */
+    resetEntity(
+        game.player,
+        x,
+        y
+    );
+
+    achievements.useItem(
+        "teleport"
+    );
+
+    resumeAfterTeleportPause();
+
+    game.state =
+        "playing";
+
+    hideTeleportPrompt();
+
+    renderer.triggerShake(
+        7,
+        0.25
+    );
+
+    updatePowerupUI();
+}
+
+
 /* =========================================================
-   DEFEAT / RESULTS
+   CLICK / TAP MAZE FOR TELEPORT
+   ========================================================= */
+
+canvas.addEventListener(
+    "pointerdown",
+    event => {
+        if (
+            game.state !==
+            "teleporting"
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        /*
+         * Convert the visible CSS
+         * canvas coordinates to the
+         * canvas's internal 960 × 640
+         * coordinate system.
+         */
+        const screenX =
+            (
+                event.clientX -
+                rect.left
+            ) *
+            (
+                canvas.width /
+                rect.width
+            );
+
+        const screenY =
+            (
+                event.clientY -
+                rect.top
+            ) *
+            (
+                canvas.height /
+                rect.height
+            );
+
+        /*
+         * Reverse the Renderer camera
+         * transform.
+         */
+        const ox =
+            canvas.width / 2 -
+            renderer.cameraX *
+                renderer.zoom;
+
+        const oy =
+            canvas.height / 2 -
+            renderer.cameraY *
+                renderer.zoom;
+
+        const worldX =
+            (
+                screenX -
+                ox
+            ) /
+            renderer.zoom;
+
+        const worldY =
+            (
+                screenY -
+                oy
+            ) /
+            renderer.zoom;
+
+        const tileWidth =
+            canvas.width /
+            maze.width;
+
+        const tileHeight =
+            canvas.height /
+            maze.height;
+
+        const tileX =
+            Math.floor(
+                worldX /
+                tileWidth
+            );
+
+        const tileY =
+            Math.floor(
+                worldY /
+                tileHeight
+            );
+
+        if (
+            tileX < 0 ||
+            tileY < 0 ||
+            tileX >=
+                maze.width ||
+            tileY >=
+                maze.height
+        ) {
+            return;
+        }
+
+        finishTeleport(
+            tileX,
+            tileY
+        );
+    }
+);
+
+
+/* =========================================================
+   DEFEAT
    ========================================================= */
 
 function showResult(
@@ -841,6 +1193,8 @@ function showResult(
 ) {
     game.state =
         "finished";
+
+    hideTeleportPrompt();
 
     updatePowerupUI();
 
@@ -852,7 +1206,10 @@ function showResult(
 
     if (caught) {
         /*
-         * Pending carrot is lost.
+         * Keep the current carrot
+         * behaviour unchanged:
+         * only this maze's pending
+         * carrot is lost.
          */
         game.pendingCarrot =
             false;
@@ -907,7 +1264,6 @@ function renderRabbitShop() {
             card.className =
                 "shop-item";
 
-
             const icon =
                 document.createElement(
                     "div"
@@ -919,7 +1275,6 @@ function renderRabbitShop() {
             icon.textContent =
                 item.icon;
 
-
             const info =
                 document.createElement(
                     "div"
@@ -927,7 +1282,6 @@ function renderRabbitShop() {
 
             info.className =
                 "shop-item-info";
-
 
             const itemName =
                 document.createElement(
@@ -940,7 +1294,6 @@ function renderRabbitShop() {
             itemName.textContent =
                 item.name;
 
-
             const description =
                 document.createElement(
                     "span"
@@ -952,7 +1305,6 @@ function renderRabbitShop() {
             description.textContent =
                 item.description;
 
-
             const bottom =
                 document.createElement(
                     "div"
@@ -960,7 +1312,6 @@ function renderRabbitShop() {
 
             bottom.className =
                 "shop-item-bottom";
-
 
             const owned =
                 document.createElement(
@@ -974,7 +1325,6 @@ function renderRabbitShop() {
                 `Owned: ${achievements.getItemCount(
                     item.id
                 )}`;
-
 
             const buyButton =
                 document.createElement(
@@ -990,7 +1340,6 @@ function renderRabbitShop() {
             buyButton.disabled =
                 achievements.carrots <
                 item.price;
-
 
             buyButton.addEventListener(
                 "click",
@@ -1017,7 +1366,6 @@ function renderRabbitShop() {
                     }
                 }
             );
-
 
             bottom.append(
                 owned,
@@ -1046,6 +1394,8 @@ function renderRabbitShop() {
 function openRabbitShop() {
     game.state =
         "shop";
+
+    hideTeleportPrompt();
 
     updatePowerupUI();
 
@@ -1085,10 +1435,6 @@ nextMazeButton.addEventListener(
    ========================================================= */
 
 function win() {
-    /*
-     * Bank the maze carrot only
-     * if the player escaped.
-     */
     if (
         game.pendingCarrot
     ) {
@@ -1145,6 +1491,12 @@ function win() {
 function update(
     deltaTime
 ) {
+    /*
+     * "teleporting" is intentionally
+     * excluded here, so the toilet,
+     * player and game timer are frozen
+     * while choosing a destination.
+     */
     if (
         game.state !==
         "playing"
@@ -1169,9 +1521,7 @@ function update(
     );
 
 
-    /*
-     * INVISIBILITY
-     */
+    /* Invisibility */
 
     let toiletTarget =
         game.player;
@@ -1197,11 +1547,6 @@ function update(
         } else if (
             game.lastSeenPosition
         ) {
-            /*
-             * Toilet keeps chasing
-             * the last position where
-             * it saw the kid.
-             */
             toiletTarget =
                 game.lastSeenPosition;
         }
@@ -1215,9 +1560,7 @@ function update(
     );
 
 
-    /*
-     * CARROT COLLECTION
-     */
+    /* Carrot collection */
 
     if (
         game.carrot
@@ -1246,9 +1589,7 @@ function update(
     }
 
 
-    /*
-     * BANANA COLLISIONS
-     */
+    /* Banana collision */
 
     for (
         let index =
@@ -1288,9 +1629,7 @@ function update(
     }
 
 
-    /*
-     * TOILET COLLISION
-     */
+    /* Toilet collision */
 
     const enemyDistance =
         Math.hypot(
@@ -1302,9 +1641,7 @@ function update(
         );
 
 
-    /*
-     * EXIT COLLISION
-     */
+    /* Exit */
 
     const exitDistance =
         Math.hypot(
@@ -1326,11 +1663,6 @@ function update(
             game.shieldActive =
                 false;
 
-            /*
-             * Push toilet back
-             * to give the kid
-             * a chance to escape.
-             */
             resetEntity(
                 game.enemy,
                 game.exit.x,
@@ -1435,6 +1767,22 @@ addEventListener(
             event.key
                 .toLowerCase();
 
+        /*
+         * Escape cancels teleport
+         * selection first.
+         */
+        if (
+            key === "escape" &&
+            game.state ===
+                "teleporting"
+        ) {
+            event.preventDefault();
+
+            cancelTeleport();
+
+            return;
+        }
+
         const keyMap = {
             arrowup: "up",
             w: "up",
@@ -1461,18 +1809,6 @@ addEventListener(
                 keyMap[key]
             );
         }
-
-
-        /*
-         * Power-up shortcuts
-         *
-         * 1 Banana
-         * 2 Turbo
-         * 3 Freeze
-         * 4 Shield
-         * 5 Cloak
-         * 6 Teleport
-         */
 
         const powerupKeys = {
             "1":
@@ -1504,13 +1840,11 @@ addEventListener(
             );
         }
 
-
         if (
             key === "r"
         ) {
             generateLevel();
         }
-
 
         if (
             key === "escape"
@@ -1620,7 +1954,6 @@ function renderGallery() {
               `${achievements.getStarsTowardNextPhoto()} ` +
               `of ${achievements.starsPerPhoto} stars toward the next memory`;
 
-
     achievements.photos.forEach(
         (
             photo,
@@ -1655,7 +1988,6 @@ function renderGallery() {
                         image.style.display =
                             "none";
                     };
-
 
                 const heading =
                     document.createElement(

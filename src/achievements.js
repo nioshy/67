@@ -102,6 +102,23 @@ export class Achievements {
 
         this.inventory =
             savedProgress.inventory;
+        /*
+ * TEMPORARY TEST MODE
+ * Remove this block when testing is finished.
+ 
+
+this.carrots = 50;
+
+this.inventory = {
+    banana: 10,
+    turboShoes: 10,
+    freezeBomb: 10,
+    shield: 10,
+    invisibilityCloak: 10,
+    teleport: 10
+};
+*/
+this.save();
     }
 
     getEmptyInventory() {
