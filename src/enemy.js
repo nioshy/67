@@ -30,7 +30,9 @@ choosePersonality() {
 },
 {
     name: "😈 Angry Toilet",
-    speed: 3.5,
+    speed: 3.8,
+    maxSpeed: 4.5,
+    acceleration: 0.035,
     description: "It's angry. Very angry. RUN!"
 },
 {
@@ -50,7 +52,16 @@ choosePersonality() {
     this.speed = this.personality.speed;
 }
     update(deltaTime, maze, player) {
-        if (this.moving) {
+        if (
+    this.personality?.name === "😈 Angry Toilet"
+) {
+    this.speed = Math.min(
+        this.speed +
+            this.personality.acceleration * deltaTime,
+        this.personality.maxSpeed
+    );
+}
+if (this.moving) {
             this.#advance(deltaTime);
             return;
         }
