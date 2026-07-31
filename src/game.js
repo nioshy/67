@@ -26,7 +26,10 @@ const closePhoto = $("close-photo-button");
 const largePhoto = $("large-photo");
 const largeTitle = $("large-photo-title");
 const largeCaption = $("large-photo-caption");
-
+const toiletPersonality = $("toilet-personality");
+const personalityName = $("personality-name");
+const personalityDescription = $("personality-description");
+const startEscapeButton = $("start-escape-button");
 const renderer = new Renderer(canvas);
 const maze = new Maze(21, 13);
 const achievements = new Achievements();
@@ -58,13 +61,22 @@ function updateStars() {
 function generateLevel() {
     maze.generate();
 
+    game.enemy.choosePersonality();
+
     game.exit = maze.findFurthest(1, 1);
 
     resetEntity(game.player, 1, 1);
-    resetEntity(game.enemy, game.exit.x, game.exit.y);
+    resetEntity(
+        game.enemy,
+        game.exit.x,
+        game.exit.y
+    );
 
-    game.state = "playing";
-    game.startTime = performance.now();
+    /*
+     * The level is ready, but nothing moves yet.
+     */
+    game.state = "waiting";
+
     game.elapsedTime = 0;
 
     timer.textContent = "Time: 0.0";
@@ -77,7 +89,32 @@ function generateLevel() {
 
     renderer.cameraX = canvas.width / 2;
     renderer.cameraY = canvas.height / 2;
+
+    /*
+     * Show the toilet personality.
+     */
+    personalityName.textContent =
+    game.enemy.personality.name;
+
+    personalityDescription.textContent =
+        game.enemy.personality.description ||
+        "Can you escape before it catches you?";
+
+    toiletPersonality.classList.remove("hidden");
 }
+
+startEscapeButton.addEventListener(
+    "click",
+    () => {
+        toiletPersonality.classList.add("hidden");
+
+        game.state = "playing";
+        game.startTime = performance.now();
+        game.elapsedTime = 0;
+
+        timer.textContent = "Time: 0.0";
+    }
+);
 
 function showResult(resultTitle, text, caught = false) {
     game.state = "finished";

@@ -1,18 +1,54 @@
 export class Enemy {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
+constructor(x, y) {
+    this.x = x;
+    this.y = y;
 
-        this.targetX = x;
-        this.targetY = y;
+    this.targetX = x;
+    this.targetY = y;
 
-        this.speed = 3.5;
-        this.moving = false;
+    this.speed = 3.5;
+    this.personality = null;
 
-        this.image = new Image();
-        this.image.src = "./assets/toilet.png";
-    }
+    this.moving = false;
 
+    this.image = new Image();
+    this.image.src = "./assets/toilet.png";
+
+    this.choosePersonality();
+}
+choosePersonality() {
+    const personalities = [
+        {
+    name: "😴 Sleepy Toilet",
+    speed: 2.2,
+    description: "It's half asleep. This should be easy..."
+},
+{
+    name: "😐 Normal Toilet",
+    speed: 3.0,
+    description: "A perfectly ordinary murderous toilet."
+},
+{
+    name: "😈 Angry Toilet",
+    speed: 3.5,
+    description: "It's angry. Very angry. RUN!"
+},
+{
+    name: "🚀 Turbo Toilet",
+    speed: 4,
+    description: "Maximum flush power. Good luck!"
+}
+    ];
+
+    this.personality =
+        personalities[
+            Math.floor(
+                Math.random() * personalities.length
+            )
+        ];
+
+    this.speed = this.personality.speed;
+}
     update(deltaTime, maze, player) {
         if (this.moving) {
             this.#advance(deltaTime);

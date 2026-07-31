@@ -753,3 +753,83 @@ button:active {
         font-size: 34px;
     }
 }
+.toilet-personality {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(0, 0, 0, 0.30);
+
+    pointer-events: auto;
+}
+
+.personality-card {
+    width: min(420px, 82%);
+
+    padding: 20px 24px;
+
+    border: 3px solid #ffd21f;
+    border-radius: 18px;
+
+    background: rgba(10, 16, 22, 0.96);
+
+    text-align: center;
+
+    box-shadow:
+        0 12px 35px rgba(0, 0, 0, 0.65);
+}
+
+.personality-name {
+    margin-bottom: 8px;
+
+    color: #ffd21f;
+
+    font-size: 30px;
+    font-weight: 900;
+}
+
+.personality-description {
+    margin-bottom: 18px;
+
+    color: #fff;
+
+    font-size: 17px;
+    font-weight: 600;
+}
+
+#start-escape-button {
+    padding: 12px 24px;
+
+    font-size: 18px;
+    font-weight: 900;
+}
+
+@media (pointer: coarse) and (orientation: landscape) {
+
+
+    .personality-card {
+        width: min(390px, 60%);
+        padding: 14px 20px;
+    }
+
+    .personality-name {
+        margin-bottom: 4px;
+        font-size: 24px;
+    }
+
+    .personality-description {
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+
+    #start-escape-button {
+        padding: 9px 18px;
+        font-size: 15px;
+    }
+}
