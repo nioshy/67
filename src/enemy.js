@@ -31,9 +31,9 @@ choosePersonality() {
 {
     name: "😈 Angry Toilet",
     speed: 3.8,
-    maxSpeed: 4.5,
-    acceleration: 0.035,
-    description: "It's angry. Very angry. RUN!"
+    maxSpeed: 5,
+    acceleration: 0.05,
+    description: "It's getting angrier and angrier... RUN!"
 },
 {
     name: "🚀 Turbo Toilet",
