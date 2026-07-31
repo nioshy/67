@@ -6,7 +6,7 @@ export class Enemy {
         this.targetX = x;
         this.targetY = y;
 
-        this.speed = 4.5;
+        this.speed = 99;
         this.moving = false;
 
         this.image = new Image();
