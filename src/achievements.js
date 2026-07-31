@@ -84,7 +84,7 @@ export class Achievements {
                 icon: "🌀",
                 price: 6,
                 description:
-                    "Teleport to a random safe tile."
+                    "Pause the chase and choose where to teleport."
             }
         ];
 
@@ -102,24 +102,18 @@ export class Achievements {
 
         this.inventory =
             savedProgress.inventory;
-        /*
- * TEMPORARY TEST MODE
- * Remove this block when testing is finished.
- 
 
-this.carrots = 50;
+        this.currentStreak =
+            savedProgress.currentStreak;
 
-this.inventory = {
-    banana: 10,
-    turboShoes: 10,
-    freezeBomb: 10,
-    shield: 10,
-    invisibilityCloak: 10,
-    teleport: 10
-};
-*/
-this.save();
+        this.bestStreak =
+            savedProgress.bestStreak;
     }
+
+
+    /* =====================================================
+       INVENTORY
+       ===================================================== */
 
     getEmptyInventory() {
         return {
@@ -131,6 +125,11 @@ this.save();
             teleport: 0
         };
     }
+
+
+    /* =====================================================
+       LOAD / SAVE
+       ===================================================== */
 
     load() {
         try {
@@ -144,6 +143,8 @@ this.save();
                     totalStars: 0,
                     unlockedCount: 0,
                     carrots: 0,
+                    currentStreak: 0,
+                    bestStreak: 0,
                     inventory:
                         this.getEmptyInventory()
                 };
@@ -199,6 +200,22 @@ this.save();
                         ) || 0
                     ),
 
+                currentStreak:
+                    Math.max(
+                        0,
+                        Number(
+                            saved.currentStreak
+                        ) || 0
+                    ),
+
+                bestStreak:
+                    Math.max(
+                        0,
+                        Number(
+                            saved.bestStreak
+                        ) || 0
+                    ),
+
                 inventory
             };
         } catch (error) {
@@ -211,11 +228,14 @@ this.save();
                 totalStars: 0,
                 unlockedCount: 0,
                 carrots: 0,
+                currentStreak: 0,
+                bestStreak: 0,
                 inventory:
                     this.getEmptyInventory()
             };
         }
     }
+
 
     save() {
         try {
@@ -232,6 +252,12 @@ this.save();
                     carrots:
                         this.carrots,
 
+                    currentStreak:
+                        this.currentStreak,
+
+                    bestStreak:
+                        this.bestStreak,
+
                     inventory:
                         this.inventory
                 })
@@ -244,11 +270,17 @@ this.save();
         }
     }
 
+
+    /* =====================================================
+       CARROTS
+       ===================================================== */
+
     addCarrot() {
         this.carrots += 1;
 
         this.save();
     }
+
 
     spendCarrots(amount) {
         if (
@@ -266,6 +298,84 @@ this.save();
         return true;
     }
 
+
+    /* =====================================================
+       WIN STREAKS
+       ===================================================== */
+
+    recordWin() {
+        this.currentStreak += 1;
+
+        if (
+            this.currentStreak >
+            this.bestStreak
+        ) {
+            this.bestStreak =
+                this.currentStreak;
+        }
+
+        let bonusCarrots = 0;
+
+        /*
+         * Streak rewards:
+         *
+         * 1 win      = +0
+         * 2 wins     = +1
+         * 3-4 wins   = +2
+         * 5+ wins    = +3
+         */
+
+        if (
+            this.currentStreak >= 5
+        ) {
+            bonusCarrots = 3;
+        } else if (
+            this.currentStreak >= 3
+        ) {
+            bonusCarrots = 2;
+        } else if (
+            this.currentStreak >= 2
+        ) {
+            bonusCarrots = 1;
+        }
+
+        this.carrots +=
+            bonusCarrots;
+
+        this.save();
+
+        return {
+            currentStreak:
+                this.currentStreak,
+
+            bestStreak:
+                this.bestStreak,
+
+            bonusCarrots
+        };
+    }
+
+
+    recordDefeat() {
+        const previousStreak =
+            this.currentStreak;
+
+        this.currentStreak = 0;
+
+        this.save();
+
+        return {
+            previousStreak,
+            bestStreak:
+                this.bestStreak
+        };
+    }
+
+
+    /* =====================================================
+       SHOP
+       ===================================================== */
+
     getShopItem(itemId) {
         return (
             this.shopItems.find(
@@ -274,6 +384,7 @@ this.save();
             ) || null
         );
     }
+
 
     buyItem(itemId) {
         const item =
@@ -294,7 +405,8 @@ this.save();
         ) {
             return {
                 success: false,
-                reason: "not-enough-carrots",
+                reason:
+                    "not-enough-carrots",
                 item
             };
         }
@@ -316,6 +428,7 @@ this.save();
         };
     }
 
+
     useItem(itemId) {
         const amount =
             this.inventory[itemId] ||
@@ -333,12 +446,18 @@ this.save();
         return true;
     }
 
+
     getItemCount(itemId) {
         return (
             this.inventory[itemId] ||
             0
         );
     }
+
+
+    /* =====================================================
+       STARS / MEMORIES
+       ===================================================== */
 
     awardStars(escapeTime) {
         let earnedStars = 1;
@@ -393,6 +512,7 @@ this.save();
         };
     }
 
+
     isUnlocked(index) {
         return (
             index <
@@ -400,12 +520,14 @@ this.save();
         );
     }
 
+
     getRemainingCount() {
         return (
             this.photos.length -
             this.unlockedCount
         );
     }
+
 
     getStarsTowardNextPhoto() {
         if (
@@ -421,6 +543,7 @@ this.save();
         );
     }
 
+
     getStarsNeededForNextPhoto() {
         if (
             this.unlockedCount >=
@@ -434,6 +557,11 @@ this.save();
             this.getStarsTowardNextPhoto()
         );
     }
+
+
+    /* =====================================================
+       STORAGE TEST
+       ===================================================== */
 
     testStorage() {
         try {

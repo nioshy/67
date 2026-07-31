@@ -140,6 +140,102 @@ let previous =
 
 
 /* =========================================================
+   STREAK UI
+   ========================================================= */
+
+let streakDisplay = null;
+
+
+function createStreakUI() {
+    streakDisplay =
+        document.createElement(
+            "div"
+        );
+
+    streakDisplay.id =
+        "streak-display";
+
+    const headerActions =
+        document.querySelector(
+            ".header-actions"
+        );
+
+    /*
+     * Put streak beside stars
+     * and carrots.
+     */
+    headerActions.insertBefore(
+        streakDisplay,
+        galleryButton
+    );
+
+    const style =
+        document.createElement(
+            "style"
+        );
+
+    style.textContent = `
+        #streak-display {
+            min-width: 72px;
+
+            padding: 10px 12px;
+
+            border: 2px solid #8b3d21;
+            border-radius: 10px;
+
+            color: #ffd0a0;
+            background: #35160c;
+
+            text-align: center;
+            font-size: 18px;
+            font-weight: 900;
+
+            white-space: nowrap;
+        }
+
+        @media (pointer: coarse) {
+            #streak-display {
+                min-width: 64px;
+
+                padding: 8px 9px;
+
+                font-size: 15px;
+            }
+        }
+
+        @media (pointer: coarse) and (orientation: landscape) {
+            #streak-display {
+                min-width: 52px;
+
+                padding: 4px 6px;
+
+                font-size: 12px;
+            }
+        }
+    `;
+
+    document.head.append(
+        style
+    );
+
+    updateStreakUI();
+}
+
+
+function updateStreakUI() {
+    if (!streakDisplay) {
+        return;
+    }
+
+    streakDisplay.textContent =
+        `🔥 ${achievements.currentStreak}`;
+
+    streakDisplay.title =
+        `Current streak: ${achievements.currentStreak} — Best: ${achievements.bestStreak}`;
+}
+
+
+/* =========================================================
    POWER-UP UI
    ========================================================= */
 
@@ -467,7 +563,7 @@ function updatePowerupUI() {
 
 
 /* =========================================================
-   BASIC HELPERS
+   HELPERS
    ========================================================= */
 
 function resetEntity(
@@ -577,7 +673,7 @@ function placeCarrot() {
 
 
 /* =========================================================
-   RUN EFFECTS
+   RESET RUN
    ========================================================= */
 
 function resetRunEffects() {
@@ -607,7 +703,7 @@ function resetRunEffects() {
 
 
 /* =========================================================
-   GENERATE LEVEL
+   LEVEL
    ========================================================= */
 
 function generateLevel() {
@@ -699,7 +795,7 @@ function generateLevel() {
 
 
 /* =========================================================
-   START LEVEL
+   START
    ========================================================= */
 
 startEscapeButton.addEventListener(
@@ -727,7 +823,7 @@ startEscapeButton.addEventListener(
 
 
 /* =========================================================
-   POWER-UPS
+   POWER UPS
    ========================================================= */
 
 function usePowerup(
@@ -749,26 +845,20 @@ function usePowerup(
         return;
     }
 
-
-    /* Banana */
-
     if (
         itemId ===
         "banana"
     ) {
-        const x =
-            Math.round(
-                game.player.x
-            );
-
-        const y =
-            Math.round(
-                game.player.y
-            );
-
         game.bananas.push({
-            x,
-            y
+            x:
+                Math.round(
+                    game.player.x
+                ),
+
+            y:
+                Math.round(
+                    game.player.y
+                )
         });
 
         achievements.useItem(
@@ -776,25 +866,18 @@ function usePowerup(
         );
     }
 
-
-    /* Turbo shoes */
-
     else if (
         itemId ===
         "turboShoes"
     ) {
-        game.player
-            .activateTurbo(
-                8
-            );
+        game.player.activateTurbo(
+            8
+        );
 
         achievements.useItem(
             itemId
         );
     }
-
-
-    /* Freeze */
 
     else if (
         itemId ===
@@ -808,9 +891,6 @@ function usePowerup(
             itemId
         );
     }
-
-
-    /* Shield */
 
     else if (
         itemId ===
@@ -829,9 +909,6 @@ function usePowerup(
             itemId
         );
     }
-
-
-    /* Invisibility */
 
     else if (
         itemId ===
@@ -860,20 +937,12 @@ function usePowerup(
         );
     }
 
-
-    /* Teleport */
-
     else if (
         itemId ===
         "teleport"
     ) {
         beginTeleport();
 
-        /*
-         * Do NOT consume teleport yet.
-         * It is consumed only after a
-         * destination is selected.
-         */
         return;
     }
 
@@ -886,16 +955,6 @@ function usePowerup(
    ========================================================= */
 
 function beginTeleport() {
-    if (
-        game.state !==
-        "playing"
-    ) {
-        return;
-    }
-
-    /*
-     * Freeze the entire chase.
-     */
     game.state =
         "teleporting";
 
@@ -927,6 +986,25 @@ function hideTeleportPrompt() {
 }
 
 
+function resumeAfterTeleportPause() {
+    if (
+        !game.teleportPauseStart
+    ) {
+        return;
+    }
+
+    const pausedFor =
+        performance.now() -
+        game.teleportPauseStart;
+
+    game.startTime +=
+        pausedFor;
+
+    game.teleportPauseStart =
+        0;
+}
+
+
 function cancelTeleport() {
     if (
         game.state !==
@@ -946,33 +1024,6 @@ function cancelTeleport() {
 }
 
 
-function resumeAfterTeleportPause() {
-    if (
-        !game.teleportPauseStart
-    ) {
-        return;
-    }
-
-    /*
-     * Move startTime forward by
-     * however long the player spent
-     * choosing a destination.
-     *
-     * This means the maze timer also
-     * pauses during teleport selection.
-     */
-    const pausedFor =
-        performance.now() -
-        game.teleportPauseStart;
-
-    game.startTime +=
-        pausedFor;
-
-    game.teleportPauseStart =
-        0;
-}
-
-
 function finishTeleport(
     x,
     y
@@ -985,19 +1036,6 @@ function finishTeleport(
     }
 
     if (
-        achievements
-            .getItemCount(
-                "teleport"
-            ) <= 0
-    ) {
-        cancelTeleport();
-        return;
-    }
-
-    /*
-     * Only floor tiles can be used.
-     */
-    if (
         !maze.isFloor(
             x,
             y
@@ -1006,10 +1044,6 @@ function finishTeleport(
         return;
     }
 
-    /*
-     * Don't teleport directly onto
-     * the toilet.
-     */
     const enemyDistance =
         Math.hypot(
             x - game.enemy.x,
@@ -1023,10 +1057,6 @@ function finishTeleport(
         return;
     }
 
-    /*
-     * Don't teleport onto the exact
-     * tile we're already standing on.
-     */
     if (
         x ===
             Math.round(
@@ -1040,9 +1070,6 @@ function finishTeleport(
         return;
     }
 
-    /*
-     * Successful teleport.
-     */
     resetEntity(
         game.player,
         x,
@@ -1069,10 +1096,6 @@ function finishTeleport(
 }
 
 
-/* =========================================================
-   CLICK / TAP MAZE FOR TELEPORT
-   ========================================================= */
-
 canvas.addEventListener(
     "pointerdown",
     event => {
@@ -1087,14 +1110,9 @@ canvas.addEventListener(
         event.stopPropagation();
 
         const rect =
-            canvas.getBoundingClientRect();
+            canvas
+                .getBoundingClientRect();
 
-        /*
-         * Convert the visible CSS
-         * canvas coordinates to the
-         * canvas's internal 960 × 640
-         * coordinate system.
-         */
         const screenX =
             (
                 event.clientX -
@@ -1115,10 +1133,6 @@ canvas.addEventListener(
                 rect.height
             );
 
-        /*
-         * Reverse the Renderer camera
-         * transform.
-         */
         const ox =
             canvas.width / 2 -
             renderer.cameraX *
@@ -1183,7 +1197,7 @@ canvas.addEventListener(
 
 
 /* =========================================================
-   DEFEAT
+   RESULT / DEFEAT
    ========================================================= */
 
 function showResult(
@@ -1201,20 +1215,27 @@ function showResult(
     title.textContent =
         resultTitle;
 
-    message.textContent =
-        text;
-
     if (caught) {
-        /*
-         * Keep the current carrot
-         * behaviour unchanged:
-         * only this maze's pending
-         * carrot is lost.
-         */
+        const streakResult =
+            achievements.recordDefeat();
+
+        updateStreakUI();
+
         game.pendingCarrot =
             false;
 
         updateCarrots();
+
+        if (
+            streakResult
+                .previousStreak >= 2
+        ) {
+            message.textContent =
+                `${text} 🔥 Your ${streakResult.previousStreak}-win streak is over!`;
+        } else {
+            message.textContent =
+                text;
+        }
 
         renderer.triggerShake(
             22,
@@ -1237,6 +1258,9 @@ function showResult(
         return;
     }
 
+    message.textContent =
+        text;
+
     overlay.classList.remove(
         "hidden"
     );
@@ -1244,7 +1268,7 @@ function showResult(
 
 
 /* =========================================================
-   RABBIT SHOP
+   SHOP
    ========================================================= */
 
 function renderRabbitShop() {
@@ -1391,7 +1415,9 @@ function renderRabbitShop() {
 }
 
 
-function openRabbitShop() {
+function openRabbitShop(
+    statusMessage = ""
+) {
     game.state =
         "shop";
 
@@ -1407,10 +1433,10 @@ function openRabbitShop() {
         "hidden"
     );
 
-    shopMessage.textContent =
-        "";
-
     renderRabbitShop();
+
+    shopMessage.textContent =
+        statusMessage;
 
     rabbitShop.classList.remove(
         "hidden"
@@ -1435,6 +1461,9 @@ nextMazeButton.addEventListener(
    ========================================================= */
 
 function win() {
+    /*
+     * Bank maze carrot.
+     */
     if (
         game.pendingCarrot
     ) {
@@ -1442,9 +1471,17 @@ function win() {
 
         game.pendingCarrot =
             false;
-
-        updateCarrots();
     }
+
+    /*
+     * Increase streak and award
+     * streak carrot bonus.
+     */
+    const streakResult =
+        achievements.recordWin();
+
+    updateCarrots();
+    updateStreakUI();
 
     const reward =
         achievements.awardStars(
@@ -1480,7 +1517,28 @@ function win() {
         );
     }
 
-    openRabbitShop();
+    let streakText =
+        `🔥 WIN STREAK: ${streakResult.currentStreak}`;
+
+    if (
+        streakResult.bonusCarrots >
+        0
+    ) {
+        streakText +=
+            ` — 🥕 +${streakResult.bonusCarrots} streak bonus!`;
+    }
+
+    if (
+        streakResult.currentStreak ===
+        streakResult.bestStreak
+    ) {
+        streakText +=
+            ` 🏆 Best: ${streakResult.bestStreak}`;
+    }
+
+    openRabbitShop(
+        streakText
+    );
 }
 
 
@@ -1491,12 +1549,6 @@ function win() {
 function update(
     deltaTime
 ) {
-    /*
-     * "teleporting" is intentionally
-     * excluded here, so the toilet,
-     * player and game timer are frozen
-     * while choosing a destination.
-     */
     if (
         game.state !==
         "playing"
@@ -1519,9 +1571,6 @@ function update(
     game.player.update(
         deltaTime
     );
-
-
-    /* Invisibility */
 
     let toiletTarget =
         game.player;
@@ -1552,15 +1601,11 @@ function update(
         }
     }
 
-
     game.enemy.update(
         deltaTime,
         maze,
         toiletTarget
     );
-
-
-    /* Carrot collection */
 
     if (
         game.carrot
@@ -1587,9 +1632,6 @@ function update(
             updateCarrots();
         }
     }
-
-
-    /* Banana collision */
 
     for (
         let index =
@@ -1628,9 +1670,6 @@ function update(
         }
     }
 
-
-    /* Toilet collision */
-
     const enemyDistance =
         Math.hypot(
             game.player.x -
@@ -1640,9 +1679,6 @@ function update(
                 game.enemy.y
         );
 
-
-    /* Exit */
-
     const exitDistance =
         Math.hypot(
             game.player.x -
@@ -1651,7 +1687,6 @@ function update(
             game.player.y -
                 game.exit.y
         );
-
 
     if (
         enemyDistance <
@@ -1767,10 +1802,6 @@ addEventListener(
             event.key
                 .toLowerCase();
 
-        /*
-         * Escape cancels teleport
-         * selection first.
-         */
         if (
             key === "escape" &&
             game.state ===
@@ -1862,7 +1893,7 @@ addEventListener(
 
 
 /* =========================================================
-   TOUCH MOVEMENT
+   TOUCH
    ========================================================= */
 
 const touchControls =
@@ -1874,7 +1905,6 @@ const touchButtons =
     document.querySelectorAll(
         ".touch-controls button[data-dir]"
     );
-
 
 touchButtons.forEach(
     button => {
@@ -1898,7 +1928,6 @@ touchButtons.forEach(
         );
     }
 );
-
 
 if (touchControls) {
     touchControls.addEventListener(
@@ -2095,13 +2124,15 @@ viewer.onclick =
 
 
 /* =========================================================
-   START
+   INITIALISE
    ========================================================= */
 
+createStreakUI();
 createPowerupUI();
 
 updateStars();
 updateCarrots();
+updateStreakUI();
 
 generateLevel();
 
