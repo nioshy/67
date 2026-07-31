@@ -9,29 +9,17 @@ const $ = id =>
 
 
 /* =========================================================
-   DOM ELEMENTS
+   DOM
    ========================================================= */
 
-const canvas =
-    $("game");
+const canvas = $("game");
+const timer = $("timer");
+const stars = $("stars-display");
+const carrotsDisplay = $("carrots-display");
 
-const timer =
-    $("timer");
-
-const stars =
-    $("stars-display");
-
-const carrotsDisplay =
-    $("carrots-display");
-
-const overlay =
-    $("overlay");
-
-const title =
-    $("message-title");
-
-const message =
-    $("message-text");
+const overlay = $("overlay");
+const title = $("message-title");
+const message = $("message-text");
 
 const starMessage =
     $("star-message");
@@ -75,9 +63,6 @@ const largeTitle =
 const largeCaption =
     $("large-photo-caption");
 
-
-/* Toilet personality screen */
-
 const toiletPersonality =
     $("toilet-personality");
 
@@ -89,9 +74,6 @@ const personalityDescription =
 
 const startEscapeButton =
     $("start-escape-button");
-
-
-/* Rabbit shop */
 
 const rabbitShop =
     $("rabbit-shop");
@@ -126,8 +108,15 @@ const game = {
     maze,
 
     exit: null,
-
     carrot: null,
+
+    /*
+     * Carrot collected this maze,
+     * but not banked until escape.
+     */
+    pendingCarrot: false,
+
+    bananas: [],
 
     player:
         new Player(1, 1),
@@ -136,15 +125,217 @@ const game = {
         new Enemy(19, 11),
 
     state:
-        "playing",
+        "waiting",
 
     startTime: 0,
+    elapsedTime: 0,
 
-    elapsedTime: 0
+    shieldActive: false,
+
+    invisible: false,
+    invisibilityTimer: 0,
+    lastSeenPosition: null
 };
 
 let previous =
     performance.now();
+
+
+/* =========================================================
+   POWER-UP UI
+   ========================================================= */
+
+let powerupBar = null;
+
+const powerupButtons =
+    new Map();
+
+
+function createPowerupUI() {
+    const style =
+        document.createElement(
+            "style"
+        );
+
+    style.textContent = `
+        #powerup-bar {
+            position: fixed;
+            left: 50%;
+            bottom: max(10px, env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 55;
+
+            display: flex;
+            gap: 6px;
+
+            padding: 6px;
+
+            border: 2px solid #354250;
+            border-radius: 14px;
+
+            background: rgba(8, 13, 18, 0.88);
+
+            pointer-events: auto;
+        }
+
+        #powerup-bar button {
+            position: relative;
+
+            width: 54px;
+            height: 48px;
+
+            padding: 0;
+
+            border: 2px solid #546372;
+            border-radius: 11px;
+
+            color: white;
+            background: #1b2935;
+
+            font-size: 25px;
+
+            box-shadow: 0 4px 0 #05080b;
+
+            touch-action: none;
+        }
+
+        #powerup-bar button:disabled {
+            opacity: 0.35;
+        }
+
+        .powerup-count {
+            position: absolute;
+            right: 2px;
+            bottom: 1px;
+
+            min-width: 16px;
+
+            padding: 1px 4px;
+
+            border-radius: 8px;
+
+            color: white;
+            background: #000;
+
+            font-size: 10px;
+            font-weight: 900;
+        }
+
+        @media (pointer: coarse) and (orientation: landscape) {
+            #powerup-bar {
+                bottom: 5px;
+                gap: 4px;
+                padding: 4px;
+            }
+
+            #powerup-bar button {
+                width: 42px;
+                height: 38px;
+
+                font-size: 20px;
+            }
+        }
+    `;
+
+    document.head.append(
+        style
+    );
+
+    powerupBar =
+        document.createElement(
+            "div"
+        );
+
+    powerupBar.id =
+        "powerup-bar";
+
+    achievements.shopItems.forEach(
+        (
+            item,
+            index
+        ) => {
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+            button.type =
+                "button";
+
+            button.dataset.item =
+                item.id;
+
+            button.title =
+                `${index + 1}: ${item.name}`;
+
+            button.innerHTML =
+                `${item.icon}<span class="powerup-count">0</span>`;
+
+            button.addEventListener(
+                "pointerdown",
+                event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    usePowerup(
+                        item.id
+                    );
+                }
+            );
+
+            powerupButtons.set(
+                item.id,
+                button
+            );
+
+            powerupBar.append(
+                button
+            );
+        }
+    );
+
+    document.body.append(
+        powerupBar
+    );
+
+    updatePowerupUI();
+}
+
+
+function updatePowerupUI() {
+    for (
+        const item
+        of achievements.shopItems
+    ) {
+        const button =
+            powerupButtons.get(
+                item.id
+            );
+
+        if (!button) {
+            continue;
+        }
+
+        const count =
+            achievements
+                .getItemCount(
+                    item.id
+                );
+
+        const countElement =
+            button.querySelector(
+                ".powerup-count"
+            );
+
+        countElement.textContent =
+            count;
+
+        button.disabled =
+            count <= 0 ||
+            game.state !==
+                "playing";
+    }
+}
 
 
 /* =========================================================
@@ -173,8 +364,13 @@ function updateStars() {
 
 
 function updateCarrots() {
-    carrotsDisplay.textContent =
-        `🥕 ${achievements.carrots}`;
+    if (game.pendingCarrot) {
+        carrotsDisplay.textContent =
+            `🥕 ${achievements.carrots} +1`;
+    } else {
+        carrotsDisplay.textContent =
+            `🥕 ${achievements.carrots}`;
+    }
 }
 
 
@@ -204,10 +400,6 @@ function placeCarrot() {
                 continue;
             }
 
-            /*
-             * Don't place it on
-             * the player's start.
-             */
             if (
                 x === 1 &&
                 y === 1
@@ -215,10 +407,6 @@ function placeCarrot() {
                 continue;
             }
 
-            /*
-             * Don't place it
-             * on the exit.
-             */
             if (
                 game.exit &&
                 x === game.exit.x &&
@@ -227,22 +415,11 @@ function placeCarrot() {
                 continue;
             }
 
-            /*
-             * Keep it a little
-             * away from the start.
-             */
-            const distanceFromStart =
-                Math.abs(
-                    x - 1
-                ) +
-                Math.abs(
-                    y - 1
-                );
+            const distance =
+                Math.abs(x - 1) +
+                Math.abs(y - 1);
 
-            if (
-                distanceFromStart <
-                4
-            ) {
+            if (distance < 4) {
                 continue;
             }
 
@@ -272,14 +449,35 @@ function placeCarrot() {
 
 
 /* =========================================================
-   LEVEL GENERATION
+   RESET POWER-UP EFFECTS
+   ========================================================= */
+
+function resetRunEffects() {
+    game.bananas = [];
+
+    game.shieldActive =
+        false;
+
+    game.invisible =
+        false;
+
+    game.invisibilityTimer =
+        0;
+
+    game.lastSeenPosition =
+        null;
+
+    game.player.resetEffects();
+
+    game.enemy.resetEffects();
+}
+
+
+/* =========================================================
+   GENERATE LEVEL
    ========================================================= */
 
 function generateLevel() {
-    /*
-     * Make sure other overlays
-     * are closed first.
-     */
     rabbitShop.classList.add(
         "hidden"
     );
@@ -287,6 +485,19 @@ function generateLevel() {
     overlay.classList.add(
         "hidden"
     );
+
+    toiletPersonality.classList.add(
+        "hidden"
+    );
+
+    /*
+     * A carrot from a failed /
+     * abandoned maze is lost.
+     */
+    game.pendingCarrot =
+        false;
+
+    updateCarrots();
 
     maze.generate();
 
@@ -312,11 +523,8 @@ function generateLevel() {
         game.exit.y
     );
 
-    /*
-     * The maze exists,
-     * but gameplay has not
-     * started yet.
-     */
+    resetRunEffects();
+
     game.state =
         "waiting";
 
@@ -342,25 +550,27 @@ function generateLevel() {
     renderer.cameraY =
         canvas.height / 2;
 
-    /*
-     * Show this maze's
-     * toilet personality.
-     */
     personalityName.textContent =
-        game.enemy.personality.name;
+        game.enemy
+            .personality
+            .name;
 
     personalityDescription.textContent =
-        game.enemy.personality.description ||
+        game.enemy
+            .personality
+            .description ||
         "Can you escape before it catches you?";
 
     toiletPersonality.classList.remove(
         "hidden"
     );
+
+    updatePowerupUI();
 }
 
 
 /* =========================================================
-   START MAZE
+   START LEVEL
    ========================================================= */
 
 startEscapeButton.addEventListener(
@@ -381,12 +591,247 @@ startEscapeButton.addEventListener(
 
         timer.textContent =
             "Time: 0.0";
+
+        updatePowerupUI();
     }
 );
 
 
 /* =========================================================
-   RESULTS
+   POWER-UPS
+   ========================================================= */
+
+function usePowerup(
+    itemId
+) {
+    if (
+        game.state !==
+        "playing"
+    ) {
+        return;
+    }
+
+    if (
+        achievements
+            .getItemCount(
+                itemId
+            ) <= 0
+    ) {
+        return;
+    }
+
+    /*
+     * BANANA
+     */
+    if (
+        itemId ===
+        "banana"
+    ) {
+        const x =
+            Math.round(
+                game.player.x
+            );
+
+        const y =
+            Math.round(
+                game.player.y
+            );
+
+        game.bananas.push({
+            x,
+            y
+        });
+    }
+
+
+    /*
+     * TURBO SHOES
+     */
+    else if (
+        itemId ===
+        "turboShoes"
+    ) {
+        game.player
+            .activateTurbo(
+                8
+            );
+    }
+
+
+    /*
+     * FREEZE BOMB
+     */
+    else if (
+        itemId ===
+        "freezeBomb"
+    ) {
+        game.enemy.freeze(
+            3
+        );
+    }
+
+
+    /*
+     * SHIELD
+     */
+    else if (
+        itemId ===
+        "shield"
+    ) {
+        /*
+         * Don't waste another
+         * shield if one is
+         * already active.
+         */
+        if (
+            game.shieldActive
+        ) {
+            return;
+        }
+
+        game.shieldActive =
+            true;
+    }
+
+
+    /*
+     * INVISIBILITY
+     */
+    else if (
+        itemId ===
+        "invisibilityCloak"
+    ) {
+        game.invisible =
+            true;
+
+        game.invisibilityTimer =
+            5;
+
+        /*
+         * Toilet remembers the
+         * last place it saw us.
+         */
+        game.lastSeenPosition = {
+            x:
+                Math.round(
+                    game.player.x
+                ),
+
+            y:
+                Math.round(
+                    game.player.y
+                )
+        };
+    }
+
+
+    /*
+     * TELEPORT
+     */
+    else if (
+        itemId ===
+        "teleport"
+    ) {
+        teleportPlayer();
+    }
+
+
+    /*
+     * Consume item only after
+     * successful activation.
+     */
+    achievements.useItem(
+        itemId
+    );
+
+    updatePowerupUI();
+}
+
+
+function teleportPlayer() {
+    const possibleTiles = [];
+
+    const enemyX =
+        Math.round(
+            game.enemy.x
+        );
+
+    const enemyY =
+        Math.round(
+            game.enemy.y
+        );
+
+    for (
+        let y = 0;
+        y < maze.height;
+        y++
+    ) {
+        for (
+            let x = 0;
+            x < maze.width;
+            x++
+        ) {
+            if (
+                !maze.isFloor(
+                    x,
+                    y
+                )
+            ) {
+                continue;
+            }
+
+            const distanceFromEnemy =
+                Math.abs(
+                    x - enemyX
+                ) +
+                Math.abs(
+                    y - enemyY
+                );
+
+            if (
+                distanceFromEnemy <
+                6
+            ) {
+                continue;
+            }
+
+            possibleTiles.push({
+                x,
+                y
+            });
+        }
+    }
+
+    if (
+        possibleTiles.length ===
+        0
+    ) {
+        return;
+    }
+
+    const destination =
+        possibleTiles[
+            Math.floor(
+                Math.random() *
+                possibleTiles.length
+            )
+        ];
+
+    resetEntity(
+        game.player,
+        destination.x,
+        destination.y
+    );
+
+    renderer.triggerShake(
+        6,
+        0.2
+    );
+}
+
+
+/* =========================================================
+   DEFEAT / RESULTS
    ========================================================= */
 
 function showResult(
@@ -397,6 +842,8 @@ function showResult(
     game.state =
         "finished";
 
+    updatePowerupUI();
+
     title.textContent =
         resultTitle;
 
@@ -404,6 +851,14 @@ function showResult(
         text;
 
     if (caught) {
+        /*
+         * Pending carrot is lost.
+         */
+        game.pendingCarrot =
+            false;
+
+        updateCarrots();
+
         renderer.triggerShake(
             22,
             1.4
@@ -436,15 +891,9 @@ function showResult(
    ========================================================= */
 
 function renderRabbitShop() {
-    /*
-     * Current carrot balance.
-     */
     shopCarrots.textContent =
         `🥕 ${achievements.carrots}`;
 
-    /*
-     * Remove old shop cards.
-     */
     shopItems.innerHTML =
         "";
 
@@ -459,8 +908,6 @@ function renderRabbitShop() {
                 "shop-item";
 
 
-            /* Icon */
-
             const icon =
                 document.createElement(
                     "div"
@@ -472,8 +919,6 @@ function renderRabbitShop() {
             icon.textContent =
                 item.icon;
 
-
-            /* Information */
 
             const info =
                 document.createElement(
@@ -507,8 +952,6 @@ function renderRabbitShop() {
             description.textContent =
                 item.description;
 
-
-            /* Bottom row */
 
             const bottom =
                 document.createElement(
@@ -544,10 +987,6 @@ function renderRabbitShop() {
             buyButton.textContent =
                 `🥕 ${item.price}`;
 
-            /*
-             * Disable only if
-             * the player cannot afford it.
-             */
             buyButton.disabled =
                 achievements.carrots <
                 item.price;
@@ -564,31 +1003,15 @@ function renderRabbitShop() {
                     if (
                         result.success
                     ) {
-                        shopMessage.textContent =
-                            `${item.icon} ${item.name} added to your backpack!`;
-
                         updateCarrots();
 
-                        /*
-                         * Re-render so the
-                         * carrot balance,
-                         * inventory number
-                         * and disabled buttons
-                         * all update immediately.
-                         */
                         renderRabbitShop();
 
-                        /*
-                         * renderRabbitShop()
-                         * clears the message,
-                         * so restore it.
-                         */
                         shopMessage.textContent =
                             `${item.icon} ${item.name} added to your backpack!`;
-                    } else if (
-                        result.reason ===
-                        "not-enough-carrots"
-                    ) {
+
+                        updatePowerupUI();
+                    } else {
                         shopMessage.textContent =
                             `You need ${item.price} carrots for ${item.name}.`;
                     }
@@ -624,10 +1047,8 @@ function openRabbitShop() {
     game.state =
         "shop";
 
-    /*
-     * Make sure other screens
-     * aren't sitting above it.
-     */
+    updatePowerupUI();
+
     overlay.classList.add(
         "hidden"
     );
@@ -664,6 +1085,21 @@ nextMazeButton.addEventListener(
    ========================================================= */
 
 function win() {
+    /*
+     * Bank the maze carrot only
+     * if the player escaped.
+     */
+    if (
+        game.pendingCarrot
+    ) {
+        achievements.addCarrot();
+
+        game.pendingCarrot =
+            false;
+
+        updateCarrots();
+    }
+
     const reward =
         achievements.awardStars(
             game.elapsedTime
@@ -696,37 +1132,14 @@ function win() {
         unlockMessage.classList.remove(
             "hidden"
         );
-    } else {
-        const starsNeeded =
-            achievements
-                .getStarsNeededForNextPhoto();
-
-        if (starsNeeded) {
-            unlockMessage.textContent =
-                `${starsNeeded} more ` +
-                `${starsNeeded === 1
-                    ? "star"
-                    : "stars"} ` +
-                `until the next memory.`;
-
-            unlockMessage.classList.remove(
-                "hidden"
-            );
-        }
     }
 
-    /*
-     * Instead of the old
-     * victory overlay,
-     * go directly to
-     * the rabbit shop.
-     */
     openRabbitShop();
 }
 
 
 /* =========================================================
-   UPDATE GAME
+   UPDATE
    ========================================================= */
 
 function update(
@@ -743,7 +1156,8 @@ function update(
         (
             performance.now() -
             game.startTime
-        ) / 1000;
+        ) /
+        1000;
 
     timer.textContent =
         `Time: ${game.elapsedTime.toFixed(
@@ -754,14 +1168,56 @@ function update(
         deltaTime
     );
 
+
+    /*
+     * INVISIBILITY
+     */
+
+    let toiletTarget =
+        game.player;
+
+    if (
+        game.invisible
+    ) {
+        game.invisibilityTimer -=
+            deltaTime;
+
+        if (
+            game.invisibilityTimer <=
+            0
+        ) {
+            game.invisible =
+                false;
+
+            game.invisibilityTimer =
+                0;
+
+            game.lastSeenPosition =
+                null;
+        } else if (
+            game.lastSeenPosition
+        ) {
+            /*
+             * Toilet keeps chasing
+             * the last position where
+             * it saw the kid.
+             */
+            toiletTarget =
+                game.lastSeenPosition;
+        }
+    }
+
+
     game.enemy.update(
         deltaTime,
         maze,
-        game.player
+        toiletTarget
     );
 
 
-    /* Carrot collection */
+    /*
+     * CARROT COLLECTION
+     */
 
     if (
         game.carrot
@@ -779,17 +1235,62 @@ function update(
             carrotDistance <
             0.35
         ) {
-            achievements.addCarrot();
-
             game.carrot =
                 null;
+
+            game.pendingCarrot =
+                true;
 
             updateCarrots();
         }
     }
 
 
-    /* Toilet collision */
+    /*
+     * BANANA COLLISIONS
+     */
+
+    for (
+        let index =
+            game.bananas.length -
+            1;
+
+        index >= 0;
+
+        index--
+    ) {
+        const banana =
+            game.bananas[index];
+
+        const distance =
+            Math.hypot(
+                game.enemy.x -
+                    banana.x,
+
+                game.enemy.y -
+                    banana.y
+            );
+
+        if (
+            distance <
+            0.4
+        ) {
+            game.enemy.slow(
+                3,
+                0.45
+            );
+
+            game.bananas.splice(
+                index,
+                1
+            );
+        }
+    }
+
+
+    /*
+     * TOILET COLLISION
+     */
 
     const enemyDistance =
         Math.hypot(
@@ -801,7 +1302,9 @@ function update(
         );
 
 
-    /* Exit collision */
+    /*
+     * EXIT COLLISION
+     */
 
     const exitDistance =
         Math.hypot(
@@ -817,11 +1320,34 @@ function update(
         enemyDistance <
         0.55
     ) {
-        showResult(
-            "Caught!",
-            "The toilet caught the 67 Kid.",
-            true
-        );
+        if (
+            game.shieldActive
+        ) {
+            game.shieldActive =
+                false;
+
+            /*
+             * Push toilet back
+             * to give the kid
+             * a chance to escape.
+             */
+            resetEntity(
+                game.enemy,
+                game.exit.x,
+                game.exit.y
+            );
+
+            renderer.triggerShake(
+                10,
+                0.35
+            );
+        } else {
+            showResult(
+                "Caught!",
+                "The toilet caught the 67 Kid.",
+                true
+            );
+        }
     } else if (
         exitDistance <
         0.25
@@ -832,18 +1358,18 @@ function update(
 
 
 /* =========================================================
-   MAIN RENDER LOOP
+   LOOP
    ========================================================= */
 
-function loop(
-    now
-) {
+function loop(now) {
     const deltaTime =
         Math.min(
             (
                 now -
                 previous
-            ) / 1000,
+            ) /
+                1000,
+
             0.05
         );
 
@@ -868,9 +1394,7 @@ function loop(
    MOVEMENT
    ========================================================= */
 
-function move(
-    direction
-) {
+function move(direction) {
     if (
         game.state !==
         "playing"
@@ -879,17 +1403,10 @@ function move(
     }
 
     const directions = {
-        up:
-            [0, -1],
-
-        down:
-            [0, 1],
-
-        left:
-            [-1, 0],
-
-        right:
-            [1, 0]
+        up: [0, -1],
+        down: [0, 1],
+        left: [-1, 0],
+        right: [1, 0]
     };
 
     const movement =
@@ -908,39 +1425,31 @@ function move(
 
 
 /* =========================================================
-   KEYBOARD CONTROLS
+   KEYBOARD
    ========================================================= */
 
 addEventListener(
     "keydown",
     event => {
         const key =
-            event.key.toLowerCase();
+            event.key
+                .toLowerCase();
 
         const keyMap = {
-            arrowup:
-                "up",
-
-            w:
-                "up",
+            arrowup: "up",
+            w: "up",
 
             arrowdown:
                 "down",
-
-            s:
-                "down",
+            s: "down",
 
             arrowleft:
                 "left",
-
-            a:
-                "left",
+            a: "left",
 
             arrowright:
                 "right",
-
-            d:
-                "right"
+            d: "right"
         };
 
         if (
@@ -953,11 +1462,55 @@ addEventListener(
             );
         }
 
+
+        /*
+         * Power-up shortcuts
+         *
+         * 1 Banana
+         * 2 Turbo
+         * 3 Freeze
+         * 4 Shield
+         * 5 Cloak
+         * 6 Teleport
+         */
+
+        const powerupKeys = {
+            "1":
+                "banana",
+
+            "2":
+                "turboShoes",
+
+            "3":
+                "freezeBomb",
+
+            "4":
+                "shield",
+
+            "5":
+                "invisibilityCloak",
+
+            "6":
+                "teleport"
+        };
+
+        if (
+            powerupKeys[key]
+        ) {
+            event.preventDefault();
+
+            usePowerup(
+                powerupKeys[key]
+            );
+        }
+
+
         if (
             key === "r"
         ) {
             generateLevel();
         }
+
 
         if (
             key === "escape"
@@ -975,7 +1528,7 @@ addEventListener(
 
 
 /* =========================================================
-   TOUCH CONTROLS
+   TOUCH MOVEMENT
    ========================================================= */
 
 const touchControls =
@@ -1000,25 +1553,8 @@ touchButtons.forEach(
                 move(
                     button.dataset.dir
                 );
-
-                if (
-                    button.setPointerCapture
-                ) {
-                    try {
-                        button.setPointerCapture(
-                            event.pointerId
-                        );
-                    } catch {
-                        /*
-                         * Some Safari
-                         * versions reject
-                         * pointer capture.
-                         */
-                    }
-                }
             }
         );
-
 
         button.addEventListener(
             "contextmenu",
@@ -1030,9 +1566,7 @@ touchButtons.forEach(
 );
 
 
-if (
-    touchControls
-) {
+if (touchControls) {
     touchControls.addEventListener(
         "touchstart",
         event => {
@@ -1043,7 +1577,6 @@ if (
         }
     );
 
-
     touchControls.addEventListener(
         "touchmove",
         event => {
@@ -1053,19 +1586,11 @@ if (
             passive: false
         }
     );
-
-
-    touchControls.addEventListener(
-        "dblclick",
-        event => {
-            event.preventDefault();
-        }
-    );
 }
 
 
 /* =========================================================
-   RESTART AFTER DEFEAT
+   RESTART
    ========================================================= */
 
 restart.onclick =
@@ -1089,13 +1614,11 @@ function renderGallery() {
         achievements.unlockedCount >=
         achievements.photos.length
 
-            ? `⭐ ${achievements.totalStars} — ` +
-              `All memories unlocked!`
+            ? `⭐ ${achievements.totalStars} — All memories unlocked!`
 
             : `⭐ ${achievements.totalStars} — ` +
               `${achievements.getStarsTowardNextPhoto()} ` +
-              `of ${achievements.starsPerPhoto} stars ` +
-              `toward the next memory`;
+              `of ${achievements.starsPerPhoto} stars toward the next memory`;
 
 
     achievements.photos.forEach(
@@ -1110,7 +1633,6 @@ function renderGallery() {
 
             card.className =
                 "gallery-card";
-
 
             if (
                 achievements.isUnlocked(
@@ -1143,12 +1665,10 @@ function renderGallery() {
                 heading.textContent =
                     photo.title;
 
-
                 card.append(
                     image,
                     heading
                 );
-
 
                 card.onclick =
                     () => {
@@ -1170,7 +1690,6 @@ function renderGallery() {
                     "locked"
                 );
 
-
                 const placeholder =
                     document.createElement(
                         "div"
@@ -1182,7 +1701,6 @@ function renderGallery() {
                 placeholder.textContent =
                     `Memory ${index + 1}`;
 
-
                 const heading =
                     document.createElement(
                         "h3"
@@ -1190,7 +1708,6 @@ function renderGallery() {
 
                 heading.textContent =
                     "Locked";
-
 
                 card.append(
                     placeholder,
@@ -1246,11 +1763,12 @@ viewer.onclick =
 
 
 /* =========================================================
-   START GAME
+   START
    ========================================================= */
 
-updateStars();
+createPowerupUI();
 
+updateStars();
 updateCarrots();
 
 generateLevel();

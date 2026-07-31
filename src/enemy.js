@@ -1,113 +1,259 @@
 export class Enemy {
-constructor(x, y) {
-    this.x = x;
-    this.y = y;
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
 
-    this.targetX = x;
-    this.targetY = y;
+        this.targetX = x;
+        this.targetY = y;
 
-    this.speed = 3.5;
-    this.personality = null;
+        this.speed = 3.5;
 
-    this.moving = false;
+        this.personality = null;
 
-    this.image = new Image();
-    this.image.src = "./assets/toilet.png";
+        this.moving = false;
 
-    this.choosePersonality();
-}
-choosePersonality() {
-    const personalities = [
-        {
-    name: "😴 Sleepy Toilet",
-    speed: 2.2,
-    description: "It's half asleep. This should be easy..."
-},
-{
-    name: "😐 Normal Toilet",
-    speed: 3.0,
-    description: "A perfectly ordinary murderous toilet."
-},
-{
-    name: "😈 Angry Toilet",
-    speed: 3.8,
-    maxSpeed: 5,
-    acceleration: 0.05,
-    description: "It's getting angrier and angrier... RUN!"
-},
-{
-    name: "🚀 Turbo Toilet",
-    speed: 4,
-    description: "Maximum flush power. Good luck!"
-}
-    ];
+        this.freezeTimer = 0;
+        this.slowTimer = 0;
+        this.slowMultiplier = 1;
 
-    this.personality =
-        personalities[
-            Math.floor(
-                Math.random() * personalities.length
-            )
+        this.image = new Image();
+        this.image.src = "./assets/toilet.png";
+
+        this.choosePersonality();
+    }
+
+    choosePersonality() {
+        const personalities = [
+            {
+                name:
+                    "😴 Sleepy Toilet",
+
+                speed: 2.2,
+
+                description:
+                    "It's half asleep. This should be easy..."
+            },
+
+            {
+                name:
+                    "😐 Normal Toilet",
+
+                speed: 3.0,
+
+                description:
+                    "A perfectly ordinary murderous toilet."
+            },
+
+            {
+                name:
+                    "😈 Angry Toilet",
+
+                speed: 3.8,
+
+                maxSpeed: 5,
+
+                acceleration: 0.05,
+
+                description:
+                    "It's getting angrier and angrier... RUN!"
+            },
+
+            {
+                name:
+                    "🚀 Turbo Toilet",
+
+                speed: 4,
+
+                description:
+                    "Maximum flush power. Good luck!"
+            }
         ];
 
-    this.speed = this.personality.speed;
-}
-    update(deltaTime, maze, player) {
-        if (
-    this.personality?.name === "😈 Angry Toilet"
-) {
-    this.speed = Math.min(
-        this.speed +
-            this.personality.acceleration * deltaTime,
-        this.personality.maxSpeed
-    );
-}
-if (this.moving) {
-            this.#advance(deltaTime);
+        this.personality =
+            personalities[
+                Math.floor(
+                    Math.random() *
+                    personalities.length
+                )
+            ];
+
+        this.speed =
+            this.personality.speed;
+
+        this.resetEffects();
+    }
+
+    resetEffects() {
+        this.freezeTimer = 0;
+        this.slowTimer = 0;
+        this.slowMultiplier = 1;
+    }
+
+    freeze(duration = 3) {
+        this.freezeTimer =
+            Math.max(
+                this.freezeTimer,
+                duration
+            );
+    }
+
+    slow(
+        duration = 3,
+        multiplier = 0.45
+    ) {
+        this.slowTimer =
+            Math.max(
+                this.slowTimer,
+                duration
+            );
+
+        this.slowMultiplier =
+            multiplier;
+    }
+
+    update(
+        deltaTime,
+        maze,
+        player
+    ) {
+        /*
+         * Frozen toilet.
+         */
+        if (this.freezeTimer > 0) {
+            this.freezeTimer -=
+                deltaTime;
+
+            if (this.freezeTimer < 0) {
+                this.freezeTimer = 0;
+            }
+
             return;
         }
 
-        const nextStep = this.#findNextStep(
-            maze,
-            player
-        );
+        /*
+         * Banana slow effect.
+         */
+        if (this.slowTimer > 0) {
+            this.slowTimer -=
+                deltaTime;
+
+            if (this.slowTimer <= 0) {
+                this.slowTimer = 0;
+                this.slowMultiplier = 1;
+            }
+        }
+
+        /*
+         * Angry Toilet becomes
+         * progressively faster.
+         */
+        if (
+            this.personality?.name ===
+            "😈 Angry Toilet"
+        ) {
+            this.speed =
+                Math.min(
+                    this.speed +
+                        this.personality
+                            .acceleration *
+                        deltaTime,
+
+                    this.personality
+                        .maxSpeed
+                );
+        }
+
+        if (this.moving) {
+            this.#advance(
+                deltaTime
+            );
+
+            return;
+        }
+
+        const nextStep =
+            this.#findNextStep(
+                maze,
+                player
+            );
 
         if (!nextStep) {
             return;
         }
 
-        this.targetX = nextStep.x;
-        this.targetY = nextStep.y;
+        this.targetX =
+            nextStep.x;
+
+        this.targetY =
+            nextStep.y;
+
         this.moving = true;
     }
 
     #advance(deltaTime) {
-        const dx = this.targetX - this.x;
-        const dy = this.targetY - this.y;
+        const dx =
+            this.targetX -
+            this.x;
 
-        const distance = Math.hypot(dx, dy);
+        const dy =
+            this.targetY -
+            this.y;
+
+        const distance =
+            Math.hypot(
+                dx,
+                dy
+            );
 
         if (distance < 0.01) {
-            this.x = this.targetX;
-            this.y = this.targetY;
-            this.moving = false;
+            this.x =
+                this.targetX;
+
+            this.y =
+                this.targetY;
+
+            this.moving =
+                false;
+
             return;
         }
 
-        const movement = Math.min(
-            this.speed * deltaTime,
-            distance
-        );
+        const effectiveSpeed =
+            this.speed *
+            this.slowMultiplier;
 
-        this.x += (dx / distance) * movement;
-        this.y += (dy / distance) * movement;
+        const movement =
+            Math.min(
+                effectiveSpeed *
+                    deltaTime,
+
+                distance
+            );
+
+        this.x +=
+            (dx / distance) *
+            movement;
+
+        this.y +=
+            (dy / distance) *
+            movement;
     }
 
-    #findNextStep(maze, player) {
-        const startX = Math.round(this.x);
-        const startY = Math.round(this.y);
+    #findNextStep(
+        maze,
+        player
+    ) {
+        const startX =
+            Math.round(this.x);
 
-        const targetX = Math.round(player.x);
-        const targetY = Math.round(player.y);
+        const startY =
+            Math.round(this.y);
+
+        const targetX =
+            Math.round(player.x);
+
+        const targetY =
+            Math.round(player.y);
 
         const queue = [
             {
@@ -116,11 +262,13 @@ if (this.moving) {
             }
         ];
 
-        const visited = new Set([
-            `${startX},${startY}`
-        ]);
+        const visited =
+            new Set([
+                `${startX},${startY}`
+            ]);
 
-        const parent = new Map();
+        const parent =
+            new Map();
 
         const directions = [
             [1, 0],
@@ -129,39 +277,68 @@ if (this.moving) {
             [0, -1]
         ];
 
-        while (queue.length > 0) {
-            const current = queue.shift();
+        while (
+            queue.length > 0
+        ) {
+            const current =
+                queue.shift();
 
             if (
-                current.x === targetX &&
-                current.y === targetY
+                current.x ===
+                    targetX &&
+                current.y ===
+                    targetY
             ) {
                 break;
             }
 
-            for (const [dx, dy] of directions) {
-                const nextX = current.x + dx;
-                const nextY = current.y + dy;
-                const key = `${nextX},${nextY}`;
+            for (
+                const [
+                    dx,
+                    dy
+                ]
+                of directions
+            ) {
+                const nextX =
+                    current.x + dx;
+
+                const nextY =
+                    current.y + dy;
+
+                const key =
+                    `${nextX},${nextY}`;
 
                 if (
                     nextX < 0 ||
                     nextY < 0 ||
-                    nextX >= maze.width ||
-                    nextY >= maze.height
+                    nextX >=
+                        maze.width ||
+                    nextY >=
+                        maze.height
                 ) {
                     continue;
                 }
 
-                if (!maze.isFloor(nextX, nextY)) {
+                if (
+                    !maze.isFloor(
+                        nextX,
+                        nextY
+                    )
+                ) {
                     continue;
                 }
 
-                if (visited.has(key)) {
+                if (
+                    visited.has(
+                        key
+                    )
+                ) {
                     continue;
                 }
 
-                visited.add(key);
+                visited.add(
+                    key
+                );
 
                 parent.set(
                     key,
@@ -182,7 +359,11 @@ if (this.moving) {
             targetX !== startX ||
             targetY !== startY
         ) {
-            if (!parent.has(targetKey)) {
+            if (
+                !parent.has(
+                    targetKey
+                )
+            ) {
                 return null;
             }
         }
@@ -203,13 +384,16 @@ if (this.moving) {
             }
 
             if (
-                previous.x === startX &&
-                previous.y === startY
+                previous.x ===
+                    startX &&
+                previous.y ===
+                    startY
             ) {
                 return step;
             }
 
-            step = previous;
+            step =
+                previous;
         }
     }
 }
