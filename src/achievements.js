@@ -202,4 +202,29 @@ export class Achievements {
             this.getStarsTowardNextPhoto()
         );
     }
+    
+    testStorage() {
+    try {
+        const testKey =
+            "67-kid-storage-test";
+
+        localStorage.setItem(
+            testKey,
+            "working"
+        );
+
+        const result =
+            localStorage.getItem(
+                testKey
+            );
+
+        localStorage.removeItem(
+            testKey
+        );
+
+        return result === "working";
+    } catch {
+        return false;
+    }
+}
 }
