@@ -34,6 +34,60 @@ export class Achievements {
             });
         }
 
+        /*
+         * Rabbit shop catalogue
+         */
+        this.shopItems = [
+            {
+                id: "banana",
+                name: "Banana Skin",
+                icon: "🍌",
+                price: 2,
+                description:
+                    "Drop it behind you to slow the toilet."
+            },
+            {
+                id: "turboShoes",
+                name: "Turbo Shoes",
+                icon: "👟",
+                price: 3,
+                description:
+                    "Run faster for a short time."
+            },
+            {
+                id: "freezeBomb",
+                name: "Freeze Bomb",
+                icon: "🧊",
+                price: 4,
+                description:
+                    "Freeze the toilet for a few seconds."
+            },
+            {
+                id: "shield",
+                name: "Shield",
+                icon: "🛡️",
+                price: 5,
+                description:
+                    "Protect yourself from one toilet attack."
+            },
+            {
+                id: "invisibilityCloak",
+                name: "Invisibility Cloak",
+                icon: "🥷",
+                price: 4,
+                description:
+                    "The toilet loses sight of you for a few seconds."
+            },
+            {
+                id: "teleport",
+                name: "Teleport",
+                icon: "🌀",
+                price: 6,
+                description:
+                    "Teleport to a random safe tile."
+            }
+        ];
+
         const savedProgress =
             this.load();
 
@@ -42,6 +96,23 @@ export class Achievements {
 
         this.unlockedCount =
             savedProgress.unlockedCount;
+
+        this.carrots =
+            savedProgress.carrots;
+
+        this.inventory =
+            savedProgress.inventory;
+    }
+
+    getEmptyInventory() {
+        return {
+            banana: 0,
+            turboShoes: 0,
+            freezeBomb: 0,
+            shield: 0,
+            invisibilityCloak: 0,
+            teleport: 0
+        };
     }
 
     load() {
@@ -54,12 +125,34 @@ export class Achievements {
             if (!savedText) {
                 return {
                     totalStars: 0,
-                    unlockedCount: 0
+                    unlockedCount: 0,
+                    carrots: 0,
+                    inventory:
+                        this.getEmptyInventory()
                 };
             }
 
             const saved =
                 JSON.parse(savedText);
+
+            const savedInventory =
+                saved.inventory || {};
+
+            const inventory =
+                this.getEmptyInventory();
+
+            for (
+                const itemId
+                of Object.keys(inventory)
+            ) {
+                inventory[itemId] =
+                    Math.max(
+                        0,
+                        Number(
+                            savedInventory[itemId]
+                        ) || 0
+                    );
+            }
 
             return {
                 totalStars:
@@ -79,7 +172,17 @@ export class Achievements {
                                 saved.unlockedCount
                             ) || 0
                         )
-                    )
+                    ),
+
+                carrots:
+                    Math.max(
+                        0,
+                        Number(
+                            saved.carrots
+                        ) || 0
+                    ),
+
+                inventory
             };
         } catch (error) {
             console.warn(
@@ -89,22 +192,134 @@ export class Achievements {
 
             return {
                 totalStars: 0,
-                unlockedCount: 0
+                unlockedCount: 0,
+                carrots: 0,
+                inventory:
+                    this.getEmptyInventory()
             };
         }
     }
 
     save() {
-        localStorage.setItem(
-            this.storageKey,
+        try {
+            localStorage.setItem(
+                this.storageKey,
 
-            JSON.stringify({
-                totalStars:
-                    this.totalStars,
+                JSON.stringify({
+                    totalStars:
+                        this.totalStars,
 
-                unlockedCount:
-                    this.unlockedCount
-            })
+                    unlockedCount:
+                        this.unlockedCount,
+
+                    carrots:
+                        this.carrots,
+
+                    inventory:
+                        this.inventory
+                })
+            );
+        } catch (error) {
+            console.warn(
+                "Could not save achievement progress.",
+                error
+            );
+        }
+    }
+
+    addCarrot() {
+        this.carrots += 1;
+
+        this.save();
+    }
+
+    spendCarrots(amount) {
+        if (
+            this.carrots <
+            amount
+        ) {
+            return false;
+        }
+
+        this.carrots -=
+            amount;
+
+        this.save();
+
+        return true;
+    }
+
+    getShopItem(itemId) {
+        return (
+            this.shopItems.find(
+                item =>
+                    item.id === itemId
+            ) || null
+        );
+    }
+
+    buyItem(itemId) {
+        const item =
+            this.getShopItem(
+                itemId
+            );
+
+        if (!item) {
+            return {
+                success: false,
+                reason: "unknown-item"
+            };
+        }
+
+        if (
+            this.carrots <
+            item.price
+        ) {
+            return {
+                success: false,
+                reason: "not-enough-carrots",
+                item
+            };
+        }
+
+        this.carrots -=
+            item.price;
+
+        this.inventory[itemId] =
+            (
+                this.inventory[itemId] ||
+                0
+            ) + 1;
+
+        this.save();
+
+        return {
+            success: true,
+            item
+        };
+    }
+
+    useItem(itemId) {
+        const amount =
+            this.inventory[itemId] ||
+            0;
+
+        if (amount <= 0) {
+            return false;
+        }
+
+        this.inventory[itemId] =
+            amount - 1;
+
+        this.save();
+
+        return true;
+    }
+
+    getItemCount(itemId) {
+        return (
+            this.inventory[itemId] ||
+            0
         );
     }
 
@@ -202,29 +417,32 @@ export class Achievements {
             this.getStarsTowardNextPhoto()
         );
     }
-    
+
     testStorage() {
-    try {
-        const testKey =
-            "67-kid-storage-test";
+        try {
+            const testKey =
+                "67-kid-storage-test";
 
-        localStorage.setItem(
-            testKey,
-            "working"
-        );
+            localStorage.setItem(
+                testKey,
+                "working"
+            );
 
-        const result =
-            localStorage.getItem(
+            const result =
+                localStorage.getItem(
+                    testKey
+                );
+
+            localStorage.removeItem(
                 testKey
             );
 
-        localStorage.removeItem(
-            testKey
-        );
-
-        return result === "working";
-    } catch {
-        return false;
+            return (
+                result ===
+                "working"
+            );
+        } catch {
+            return false;
+        }
     }
-}
 }

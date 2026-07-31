@@ -53,25 +53,21 @@
 
 <body>
     <main class="game-container">
-        <header>
-            <div id="toilet-personality" class="toilet-personality hidden">
-    <div class="personality-card">
-        <div id="personality-name" class="personality-name"></div>
-        <div id="personality-description" class="personality-description"></div>
 
-        <button id="start-escape-button">
-            LET'S ESCAPE!
-        </button>
-    </div>
-</div>
+        <header>
             <h1>
                 <span>Arthur & Valder's 67 Kid:</span>
                 Maze Escape
             </h1>
 
             <div class="header-actions">
+
                 <div id="stars-display">
                     ⭐ 0
+                </div>
+
+                <div id="carrots-display">
+                    🥕 0
                 </div>
 
                 <button
@@ -84,21 +80,51 @@
                 <div id="timer">
                     Time: 0.0
                 </div>
+
             </div>
         </header>
 
         <div class="canvas-container">
+
             <canvas
                 id="game"
                 width="960"
                 height="640"
             ></canvas>
 
+            <!-- Toilet personality screen -->
+
+            <div
+                id="toilet-personality"
+                class="toilet-personality hidden"
+            >
+                <div class="personality-card">
+
+                    <div
+                        id="personality-name"
+                        class="personality-name"
+                    ></div>
+
+                    <div
+                        id="personality-description"
+                        class="personality-description"
+                    ></div>
+
+                    <button id="start-escape-button">
+                        LET'S ESCAPE!
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- End game overlay -->
+
             <div
                 id="overlay"
                 class="overlay hidden"
             >
                 <div class="message-box">
+
                     <h2 id="message-title">
                         Game Over
                     </h2>
@@ -118,12 +144,93 @@
                     <button id="restart-button">
                         Play Again
                     </button>
+
                 </div>
             </div>
+
+            <!-- Rabbit shop -->
+
+            <div
+                id="rabbit-shop"
+                class="rabbit-shop hidden"
+            >
+                <div class="rabbit-shop-card">
+
+                    <div class="rabbit-shop-character">
+
+                        <img
+                            src="./assets/rabbit-shop.png"
+                            alt="Rabbit shopkeeper"
+                            class="rabbit-shop-image"
+                        >
+
+                        <div class="rabbit-speech">
+                            Nice escape!
+                            What can I get you?
+                        </div>
+
+                    </div>
+
+                    <div class="rabbit-shop-content">
+
+                        <div class="rabbit-shop-header">
+
+                            <div>
+                                <h2>
+                                    🐰 Rabbit's Shop
+                                </h2>
+
+                                <p>
+                                    Spend carrots on power-ups
+                                    for future mazes.
+                                </p>
+                            </div>
+
+                            <div
+                                id="shop-carrots"
+                                class="shop-carrots"
+                            >
+                                🥕 0
+                            </div>
+
+                        </div>
+
+                        <div
+                            id="shop-items"
+                            class="shop-items"
+                        ></div>
+
+                        <p
+                            id="shop-message"
+                            class="shop-message"
+                        ></p>
+
+                        <div class="shop-footer">
+
+                            <div class="shop-inventory-summary">
+                                Power-ups stay in your backpack
+                                until you use them.
+                            </div>
+
+                            <button id="next-maze-button">
+                                NEXT MAZE →
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
         </div>
 
+        <!-- Touch controls -->
+
         <div class="touch-controls">
+
             <div class="touch-side touch-left">
+
                 <button
                     data-dir="up"
                     aria-label="Move up"
@@ -144,9 +251,11 @@
                 >
                     ▼
                 </button>
+
             </div>
 
             <div class="touch-side touch-right">
+
                 <button
                     data-dir="up"
                     aria-label="Move up"
@@ -167,23 +276,34 @@
                 >
                     ▼
                 </button>
+
             </div>
+
         </div>
 
         <p class="instructions">
-            Arrow keys/WASD on computer. Touch controls on iPad.
+            Arrow keys/WASD on computer.
+            Touch controls on iPad.
             Press R for a new maze.
         </p>
+
     </main>
+
+    <!-- Gallery -->
 
     <section
         id="gallery-screen"
         class="gallery-screen hidden"
     >
         <div class="gallery-panel">
+
             <div class="gallery-header">
+
                 <div>
-                    <h2>Holiday Gallery</h2>
+                    <h2>
+                        Holiday Gallery
+                    </h2>
+
                     <p id="gallery-progress"></p>
                     <p id="gallery-stars"></p>
                 </div>
@@ -194,14 +314,18 @@
                 >
                     Close
                 </button>
+
             </div>
 
             <div
                 id="gallery-grid"
                 class="gallery-grid"
             ></div>
+
         </div>
     </section>
+
+    <!-- Full screen memory viewer -->
 
     <section
         id="photo-viewer"
@@ -220,12 +344,15 @@
         >
 
         <h2 id="large-photo-title"></h2>
+
         <p id="large-photo-caption"></p>
+
     </section>
 
     <script
         type="module"
         src="./src/game.js"
     ></script>
+
 </body>
 </html>
