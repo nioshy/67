@@ -279,6 +279,10 @@ canvas {
     font-size: 18px;
 }
 
+#message-text {
+    white-space: pre-line;
+}
+
 .star-message,
 .unlock-message {
     padding: 12px;

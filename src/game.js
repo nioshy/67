@@ -1490,8 +1490,20 @@ function win() {
 
     updateStars();
 
+    /*
+     * Victory screen.
+     */
+    game.state =
+        "victory";
+
+    title.textContent =
+        "You Escaped!";
+
+    message.textContent =
+        `Escape time: ${game.elapsedTime.toFixed(1)} seconds.`;
+
     starMessage.textContent =
-        `You earned ${reward.earnedStars} ` +
+        `⭐ You earned ${reward.earnedStars} ` +
         `${reward.earnedStars === 1
             ? "star"
             : "stars"}!`;
@@ -1500,11 +1512,14 @@ function win() {
         "hidden"
     );
 
+    /*
+     * Memory unlock message.
+     */
     if (
         reward.newPhotos.length
     ) {
         unlockMessage.textContent =
-            `New memory unlocked: ` +
+            `🎉 New memory unlocked: ` +
             `${reward.newPhotos
                 .map(
                     photo =>
@@ -1515,17 +1530,25 @@ function win() {
         unlockMessage.classList.remove(
             "hidden"
         );
+    } else {
+        unlockMessage.classList.add(
+            "hidden"
+        );
     }
 
+    /*
+     * Add streak information
+     * to the victory screen.
+     */
     let streakText =
-        `🔥 WIN STREAK: ${streakResult.currentStreak}`;
+        `🔥 Win streak: ${streakResult.currentStreak}`;
 
     if (
         streakResult.bonusCarrots >
         0
     ) {
         streakText +=
-            ` — 🥕 +${streakResult.bonusCarrots} streak bonus!`;
+            `   🥕 +${streakResult.bonusCarrots} streak bonus`;
     }
 
     if (
@@ -1533,12 +1556,24 @@ function win() {
         streakResult.bestStreak
     ) {
         streakText +=
-            ` 🏆 Best: ${streakResult.bestStreak}`;
+            `   🏆 Best: ${streakResult.bestStreak}`;
     }
 
-    openRabbitShop(
-        streakText
+    message.textContent +=
+        `\n${streakText}`;
+
+    /*
+     * The button now leads
+     * to the rabbit shop.
+     */
+    restart.textContent =
+        "VISIT RABBIT'S SHOP 🐰";
+
+    overlay.classList.remove(
+        "hidden"
     );
+
+    updatePowerupUI();
 }
 
 
@@ -1957,7 +1992,37 @@ if (touchControls) {
    ========================================================= */
 
 restart.onclick =
-    generateLevel;
+    () => {
+        /*
+         * After victory:
+         * go to the rabbit shop.
+         */
+        if (
+            game.state ===
+            "victory"
+        ) {
+            overlay.classList.add(
+                "hidden"
+            );
+
+            /*
+             * Restore the button text
+             * for future defeats.
+             */
+            restart.textContent =
+                "Play Again";
+
+            openRabbitShop();
+
+            return;
+        }
+
+        /*
+         * After being caught:
+         * start another maze normally.
+         */
+        generateLevel();
+    };
 
 
 /* =========================================================
