@@ -95,6 +95,7 @@ const nextMazeButton =
 
 const rewardScreen = $("reward-screen");
 const rewardChoices = $("reward-choices");
+const rewardRunStats = $("reward-run-stats");
 const runStats = $("run-stats");
 const characterSelection = $("character-selection");
 const characterChoices = $("character-choices");
@@ -732,6 +733,8 @@ function updateRunStats() {
             </div>
         `).join("") : `<div class="run-stat-empty">Choose a reward after your first escape.</div>`}
     `;
+
+    rewardRunStats.innerHTML = runStats.innerHTML;
 }
 
 function renderCharacterChoices() {
