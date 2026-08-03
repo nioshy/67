@@ -1536,7 +1536,9 @@ button:active {
 
     .character-selection,
     .reward-screen,
-    .rabbit-shop {
+    .rabbit-shop,
+    .overlay,
+    .toilet-personality {
         position: fixed;
         inset: 0;
         width: 100vw;
@@ -1551,6 +1553,70 @@ button:active {
             max(10px, env(safe-area-inset-right))
             max(6px, env(safe-area-inset-bottom))
             max(10px, env(safe-area-inset-left));
+    }
+
+    .overlay,
+    .toilet-personality {
+        display: block;
+        background: rgba(3, 7, 12, .97);
+    }
+
+    .message-box,
+    .personality-card {
+        width: min(100%, 470px);
+        margin: 0 auto;
+    }
+
+    .message-box {
+        padding: 9px 14px 12px;
+    }
+
+    .message-box h2 {
+        margin-bottom: 3px;
+        font-size: 24px;
+    }
+
+    .message-box p {
+        margin: 3px 0;
+        font-size: 10px;
+        line-height: 1.25;
+    }
+
+    .victory-character-image {
+        width: min(120px, 30%);
+        max-height: 72px;
+        margin: 3px auto;
+    }
+
+    #restart-button {
+        display: block;
+        width: 100%;
+        min-height: 42px;
+        margin-top: 7px;
+        padding: 7px 12px;
+        font-size: 12px;
+    }
+
+    .personality-card {
+        padding: 10px 14px;
+    }
+
+    .personality-name {
+        margin-bottom: 3px;
+        font-size: 20px;
+    }
+
+    .personality-description {
+        margin-bottom: 7px;
+        font-size: 10px;
+        line-height: 1.25;
+    }
+
+    #start-escape-button {
+        width: 100%;
+        min-height: 42px;
+        padding: 7px 12px;
+        font-size: 12px;
     }
 
     .character-selection-panel,
