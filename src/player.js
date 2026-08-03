@@ -30,7 +30,7 @@ export class Player {
         this.speed = this.baseSpeed * 1.5;
     }
 
-    move(dx, dy, maze, maximumSteps = 1) {
+    move(dx, dy, maze, maximumSteps = 1, canPassWalls = false) {
         if (this.moving) {
             return;
         }
@@ -43,7 +43,13 @@ export class Player {
             const candidateX = nextX + dx;
             const candidateY = nextY + dy;
 
-            if (!maze.isFloor(candidateX, candidateY)) {
+            const insideMaze =
+                candidateX >= 0 &&
+                candidateY >= 0 &&
+                candidateX < maze.width &&
+                candidateY < maze.height;
+
+            if (!insideMaze || (!canPassWalls && !maze.isFloor(candidateX, candidateY))) {
                 break;
             }
 

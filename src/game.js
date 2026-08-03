@@ -126,6 +126,7 @@ const game = {
     pendingCarrot: false,
 
     bananas: [],
+    sewerHatches: [],
 
     player:
         new Player(1, 1),
@@ -140,6 +141,8 @@ const game = {
     elapsedTime: 0,
 
     shieldCharges: 0,
+    wallCutterTimer: 0,
+    playerTrapTimer: 0,
 
     invisible: false,
     invisibilityTimer: 0,
@@ -150,6 +153,16 @@ const game = {
     enemyGear: [],
     enemyStartDelay: 0,
     laser: null,
+    plunger: null,
+    plungerCooldown: 0,
+    magneticFlush: null,
+    magneticFlushCooldown: 0,
+    springSeatCooldown: 0,
+    enemyArmorHits: 0,
+    doubleFlushPhase: "cooldown",
+    doubleFlushTimer: 0,
+    decoyDuck: null,
+    decoyDuckCooldown: 0,
     character: CHARACTERS[0],
     lastPlayerStepKey: "1,1"
 };
@@ -489,8 +502,6 @@ function createPowerupUI() {
         powerupBar
     );
 
-    createTeleportPrompt();
-
     updatePowerupUI();
 }
 
@@ -624,6 +635,22 @@ function hasEnemyGear(id) {
     return game.enemyGear.some(item => item.id === id);
 }
 
+function hasActiveEnemyArmor() {
+    return hasEnemyGear("armor") && game.enemyArmorHits > 0;
+}
+
+function absorbEnemyArmorHit() {
+    if (!hasActiveEnemyArmor()) return false;
+    game.enemyArmorHits -= 1;
+    updateRunStats();
+    renderer.triggerShake(4, 0.15);
+    return true;
+}
+
+function getEnemyLevelSpeedBonus() {
+    return Math.max(0, run.level - 1) * 0.02;
+}
+
 function rewardStackCount(id) {
     return run.rewards.filter(reward => reward.id === id).length;
 }
@@ -720,6 +747,18 @@ function updateRunStats() {
         ["🧻 Toilet speed", `−${slow}%`, rewardStackCount("toiletSlow")],
         ["❄️ Freeze Bomb", `${(3 + freeze).toFixed(1)}s`, rewardStackCount("extraFreeze")]
     ].filter(([, , stacks]) => stacks > 0);
+    const toiletEquipment = game.enemyGear.length
+        ? game.enemyGear.map(item => {
+            const status = item.id === "armor"
+                ? ` · ${game.enemyArmorHits} hit${game.enemyArmorHits === 1 ? "" : "s"} left`
+                : "";
+            return `
+            <div class="toilet-equipment-item" title="${item.description}">
+                <span>${item.icon} ${item.name}${status}</span>
+            </div>
+        `;
+        }).join("")
+        : `<div class="run-stat-empty">None this level</div>`;
 
     runStats.innerHTML = `
         <div class="run-character">${game.character.name} · ${game.character.ability}</div>
@@ -732,6 +771,8 @@ function updateRunStats() {
                 <span class="run-stat-value">${value}</span>
             </div>
         `).join("") : `<div class="run-stat-empty">Choose a reward after your first escape.</div>`}
+        <div class="toilet-equipment-title">TOILET EQUIPMENT · +${Math.round(getEnemyLevelSpeedBonus() * 100)}% LEVEL SPEED</div>
+        <div class="toilet-equipment-list">${toiletEquipment}</div>
     `;
 
     rewardRunStats.innerHTML = runStats.innerHTML;
@@ -871,6 +912,290 @@ function updateLaser(deltaTime) {
     game.laser = { phase: "cooldown", timer: 4.2, cooldown: 0 };
 }
 
+function findPlungerPath(startX, startY, targetX, targetY) {
+    const startKey = `${startX},${startY}`;
+    const targetKey = `${targetX},${targetY}`;
+    const queue = [{ x: startX, y: startY }];
+    const visited = new Set([startKey]);
+    const parent = new Map();
+
+    while (queue.length) {
+        const current = queue.shift();
+        const currentKey = `${current.x},${current.y}`;
+        if (currentKey === targetKey) break;
+
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const next = { x: current.x + dx, y: current.y + dy };
+            const nextKey = `${next.x},${next.y}`;
+            if (!visited.has(nextKey) && maze.isFloor(next.x, next.y)) {
+                visited.add(nextKey);
+                parent.set(nextKey, currentKey);
+                queue.push(next);
+            }
+        }
+    }
+
+    if (!visited.has(targetKey)) return [];
+
+    const path = [];
+    let key = targetKey;
+    while (key !== startKey) {
+        const [x, y] = key.split(",").map(Number);
+        path.unshift({ x, y });
+        key = parent.get(key);
+    }
+    return path;
+}
+
+function updatePlungerCannon(deltaTime) {
+    if (!hasEnemyGear("plungerCannon")) return;
+
+    if (game.plunger) {
+        game.plunger.life -= deltaTime;
+        let remainingMovement = game.plunger.speed * deltaTime;
+
+        while (remainingMovement > 0 && game.plunger.path.length) {
+            const target = game.plunger.path[0];
+            const dx = target.x - game.plunger.x;
+            const dy = target.y - game.plunger.y;
+            const distance = Math.hypot(dx, dy);
+
+            if (distance <= remainingMovement) {
+                game.plunger.x = target.x;
+                game.plunger.y = target.y;
+                game.plunger.path.shift();
+                remainingMovement -= distance;
+            } else {
+                game.plunger.x += dx / distance * remainingMovement;
+                game.plunger.y += dy / distance * remainingMovement;
+                remainingMovement = 0;
+            }
+        }
+
+        const hitPlayer = Math.hypot(
+            game.player.x - game.plunger.x,
+            game.player.y - game.plunger.y
+        ) < 0.38;
+
+        if (hitPlayer) {
+            game.plunger = null;
+            if (game.shieldCharges > 0) {
+                game.shieldCharges -= 1;
+                updateRunStats();
+            } else {
+                showResult("Plunged!", "The toilet's Plunger Cannon caught the 67 Kid.", true);
+            }
+        } else if (!game.plunger.path.length || game.plunger.life <= 0) {
+            game.plunger = null;
+        }
+        return;
+    }
+
+    if (game.enemyStartDelay > 0 || game.enemy.isHarmless()) return;
+
+    game.plungerCooldown -= deltaTime;
+    if (game.plungerCooldown > 0) return;
+
+    const startX = Math.round(game.enemy.x);
+    const startY = Math.round(game.enemy.y);
+    const path = findPlungerPath(
+        startX,
+        startY,
+        Math.round(game.player.x),
+        Math.round(game.player.y)
+    );
+    if (!path.length) {
+        game.plungerCooldown = 1;
+        return;
+    }
+
+    const toiletSpeed =
+        game.enemy.speed *
+        game.enemy.slowMultiplier *
+        game.enemy.gearSpeedMultiplier *
+        game.enemy.burstSpeedMultiplier;
+    game.plunger = {
+        x: startX,
+        y: startY,
+        path,
+        speed: Math.max(6, toiletSpeed * 1.4),
+        life: 8
+    };
+    game.plungerCooldown = 5;
+}
+
+function pullPlayerTowardToilet() {
+    if (game.player.moving) return false;
+
+    const dx = game.enemy.x - game.player.x;
+    const dy = game.enemy.y - game.player.y;
+    const directions = Math.abs(dx) >= Math.abs(dy)
+        ? [[Math.sign(dx), 0], [0, Math.sign(dy)]]
+        : [[0, Math.sign(dy)], [Math.sign(dx), 0]];
+
+    for (const [moveX, moveY] of directions) {
+        if ((moveX || moveY) && maze.isFloor(
+            Math.round(game.player.x) + moveX,
+            Math.round(game.player.y) + moveY
+        )) {
+            game.player.move(moveX, moveY, maze);
+            return true;
+        }
+    }
+    return false;
+}
+
+function updateMagneticFlush(deltaTime) {
+    if (!hasEnemyGear("magneticFlush")) return;
+    if (game.enemyStartDelay > 0 || game.enemy.isHarmless()) return;
+
+    if (game.magneticFlush) {
+        game.magneticFlush.timer -= deltaTime;
+        if (game.magneticFlush.timer <= 0 && pullPlayerTowardToilet()) {
+            game.magneticFlush = null;
+            game.magneticFlushCooldown = 6.5;
+            renderer.triggerShake(5, 0.2);
+        }
+        return;
+    }
+
+    game.magneticFlushCooldown -= deltaTime;
+    if (game.magneticFlushCooldown <= 0) {
+        game.magneticFlush = { timer: 0.9 };
+    }
+}
+
+function updateSpringSeat(deltaTime) {
+    if (!hasEnemyGear("springSeat") || game.enemy.ghostMode) return;
+    if (game.enemyStartDelay > 0 || game.enemy.isHarmless()) return;
+
+    game.springSeatCooldown -= deltaTime;
+    if (
+        game.springSeatCooldown > 0 ||
+        Math.abs(game.enemy.x - Math.round(game.enemy.x)) > 0.08 ||
+        Math.abs(game.enemy.y - Math.round(game.enemy.y)) > 0.08
+    ) return;
+
+    const startX = Math.round(game.enemy.x);
+    const startY = Math.round(game.enemy.y);
+    const jumps = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+        .map(([dx, dy]) => ({
+            x: startX + dx * 2,
+            y: startY + dy * 2,
+            wallX: startX + dx,
+            wallY: startY + dy
+        }))
+        .filter(jump =>
+            !maze.isFloor(jump.wallX, jump.wallY) &&
+            maze.isFloor(jump.x, jump.y)
+        )
+        .sort((a, b) =>
+            Math.hypot(a.x - game.player.x, a.y - game.player.y) -
+            Math.hypot(b.x - game.player.x, b.y - game.player.y)
+        );
+
+    if (jumps.length) {
+        resetEntity(game.enemy, jumps[0].x, jumps[0].y);
+        renderer.triggerShake(6, 0.18);
+    }
+    game.springSeatCooldown = 5.5;
+}
+
+function updateDoubleFlush(deltaTime) {
+    if (!hasEnemyGear("doubleFlush")) return;
+
+    game.doubleFlushTimer -= deltaTime;
+    if (game.doubleFlushTimer > 0) return;
+
+    if (game.doubleFlushPhase === "cooldown") {
+        game.doubleFlushPhase = "warning";
+        game.doubleFlushTimer = 0.9;
+        return;
+    }
+
+    if (game.doubleFlushPhase === "warning") {
+        game.doubleFlushPhase = "active";
+        game.doubleFlushTimer = 1.5;
+        game.enemy.burstSpeedMultiplier = 1.6;
+        return;
+    }
+
+    game.doubleFlushPhase = "cooldown";
+    game.doubleFlushTimer = 6.5;
+    game.enemy.burstSpeedMultiplier = 1;
+}
+
+function chooseDecoyLocation() {
+    const candidates = [];
+    for (let y = 1; y < maze.height - 1; y++) {
+        for (let x = 1; x < maze.width - 1; x++) {
+            if (
+                maze.isFloor(x, y) &&
+                Math.hypot(x - game.player.x, y - game.player.y) > 3 &&
+                Math.hypot(x - game.enemy.x, y - game.enemy.y) > 4
+            ) candidates.push({ x, y });
+        }
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)] || null;
+}
+
+function updateDecoyDuck(deltaTime) {
+    if (!hasEnemyGear("decoyDuck")) return;
+
+    if (game.decoyDuck) {
+        game.decoyDuck.timer -= deltaTime;
+        if (game.decoyDuck.timer <= 0) {
+            game.decoyDuck = null;
+            game.decoyDuckCooldown = 7;
+        }
+        return;
+    }
+
+    game.decoyDuckCooldown -= deltaTime;
+    if (game.decoyDuckCooldown <= 0) {
+        const location = chooseDecoyLocation();
+        if (location) game.decoyDuck = { ...location, timer: 2.5 };
+        else game.decoyDuckCooldown = 1;
+    }
+}
+
+function placeSewerHatches() {
+    game.sewerHatches = [];
+    if (!hasEnemyGear("sewerHatch")) return;
+
+    const candidates = [];
+    for (let y = 1; y < maze.height - 1; y++) {
+        for (let x = 1; x < maze.width - 1; x++) {
+            if (
+                maze.isFloor(x, y) &&
+                Math.hypot(x - 1, y - 1) > 3 &&
+                Math.hypot(x - game.exit.x, y - game.exit.y) > 2 &&
+                (!game.carrot || x !== game.carrot.x || y !== game.carrot.y)
+            ) candidates.push({ x, y, active: true });
+        }
+    }
+
+    while (game.sewerHatches.length < 3 && candidates.length) {
+        game.sewerHatches.push(
+            candidates.splice(Math.floor(Math.random() * candidates.length), 1)[0]
+        );
+    }
+}
+
+function checkSewerHatchTrap() {
+    if (game.playerTrapTimer > 0) return;
+    const hatch = game.sewerHatches.find(item =>
+        item.active &&
+        Math.hypot(game.player.x - item.x, game.player.y - item.y) < 0.28
+    );
+    if (!hatch) return;
+
+    hatch.active = false;
+    game.playerTrapTimer = 1.5;
+    resetEntity(game.player, Math.round(game.player.x), Math.round(game.player.y));
+    renderer.triggerShake(5, 0.2);
+}
+
 function checkCharacterStepPerk() {
     if (game.player.moving) return;
 
@@ -987,8 +1312,11 @@ function placeCarrot() {
 
 function resetRunEffects() {
     game.bananas = [];
+    game.sewerHatches = [];
 
     game.shieldCharges = 0;
+    game.wallCutterTimer = 0;
+    game.playerTrapTimer = 0;
 
     game.invisible =
         false;
@@ -1009,6 +1337,7 @@ function resetRunEffects() {
     game.enemy.gearSpeedMultiplier =
         (hasEnemyGear("turboTank") ? 1.12 : 1) *
         (hasEnemyGear("ghost") ? 0.75 : 1) *
+        (1 + getEnemyLevelSpeedBonus()) *
         (1 - Math.min(0.35, run.total("toiletSlow")));
 
     game.enemy.ghostMode = hasEnemyGear("ghost");
@@ -1019,6 +1348,16 @@ function resetRunEffects() {
     game.enemyStartDelay =
         run.total("headStart") * (game.character.headStartMultiplier || 1);
     game.laser = null;
+    game.plunger = null;
+    game.plungerCooldown = 2.5;
+    game.magneticFlush = null;
+    game.magneticFlushCooldown = 3.5;
+    game.springSeatCooldown = 3.5;
+    game.enemyArmorHits = hasEnemyGear("armor") ? 3 : 0;
+    game.doubleFlushPhase = "cooldown";
+    game.doubleFlushTimer = 4;
+    game.decoyDuck = null;
+    game.decoyDuckCooldown = 4;
     game.lastPlayerStepKey = "1,1";
 
     updateRunStats();
@@ -1075,6 +1414,8 @@ function generateLevel() {
     );
 
     resetRunEffects();
+    placeSewerHatches();
+    updateRunStats();
 
     game.state =
         "waiting";
@@ -1109,7 +1450,7 @@ function generateLevel() {
     const personalityLines = [
         game.enemy.personality.description ||
             "Can you escape before it catches you?",
-        `Run level ${run.level}.`
+        `Run level ${run.level}. Toilet level-speed bonus: +${Math.round(getEnemyLevelSpeedBonus() * 100)}%.`
     ];
 
     if (game.enemyGear.length) {
@@ -1222,7 +1563,7 @@ function usePowerup(
         itemId ===
         "freezeBomb"
     ) {
-        if (hasEnemyGear("armor")) {
+        if (absorbEnemyArmorHit()) {
             achievements.useItem(itemId);
             updatePowerupUI();
             return;
@@ -1285,11 +1626,10 @@ function usePowerup(
 
     else if (
         itemId ===
-        "teleport"
+        "wallCutter"
     ) {
-        beginTeleport();
-
-        return;
+        game.wallCutterTimer = Math.max(game.wallCutterTimer, 2);
+        achievements.useItem(itemId);
     }
 
     updatePowerupUI();
@@ -1967,9 +2307,14 @@ function update(
             1
         )}`;
 
-    game.player.update(
-        deltaTime
-    );
+    game.wallCutterTimer = Math.max(0, game.wallCutterTimer - deltaTime);
+    game.playerTrapTimer = Math.max(0, game.playerTrapTimer - deltaTime);
+
+    if (game.playerTrapTimer <= 0) {
+        game.player.update(deltaTime);
+    }
+
+    checkSewerHatchTrap();
 
     checkCharacterStepPerk();
 
@@ -2016,6 +2361,11 @@ function update(
     );
 
     updateLaser(deltaTime);
+    updatePlungerCannon(deltaTime);
+    updateMagneticFlush(deltaTime);
+    updateSpringSeat(deltaTime);
+    updateDoubleFlush(deltaTime);
+    updateDecoyDuck(deltaTime);
 
     if (game.state !== "playing") {
         return;
@@ -2072,7 +2422,7 @@ function update(
             distance <
             0.4
         ) {
-            if (hasEnemyGear("armor")) {
+            if (absorbEnemyArmorHit()) {
                 game.bananas.splice(index, 1);
                 continue;
             }
@@ -2186,7 +2536,8 @@ function loop(now) {
 function move(direction) {
     if (
         game.state !==
-        "playing"
+        "playing" ||
+        game.playerTrapTimer > 0
     ) {
         return;
     }
@@ -2210,7 +2561,8 @@ function move(direction) {
             maze,
             hasEnemyGear("overflowed") && Math.random() < 0.25
                 ? 2
-                : 1
+                : 1,
+            game.wallCutterTimer > 0
         );
     }
 }
@@ -2283,7 +2635,7 @@ addEventListener(
                 "invisibilityCloak",
 
             "6":
-                "teleport"
+                "wallCutter"
         };
 
         if (

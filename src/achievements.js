@@ -42,7 +42,7 @@ export class Achievements {
                 id: "banana",
                 name: "Banana Skin",
                 icon: "🍌",
-                price: 2,
+                price: 3,
                 description:
                     "Drop it behind you to slow the toilet."
             },
@@ -50,7 +50,7 @@ export class Achievements {
                 id: "turboShoes",
                 name: "Turbo Shoes",
                 icon: "👟",
-                price: 3,
+                price: 5,
                 description:
                     "Run faster for a short time."
             },
@@ -58,7 +58,7 @@ export class Achievements {
                 id: "freezeBomb",
                 name: "Freeze Bomb",
                 icon: "🧊",
-                price: 4,
+                price: 8,
                 description:
                     "Freeze the toilet for a few seconds."
             },
@@ -66,7 +66,7 @@ export class Achievements {
                 id: "shield",
                 name: "Shield",
                 icon: "🛡️",
-                price: 5,
+                price: 10,
                 description:
                     "Protect yourself from one toilet attack."
             },
@@ -74,17 +74,17 @@ export class Achievements {
                 id: "invisibilityCloak",
                 name: "Invisibility Cloak",
                 icon: "🥷",
-                price: 4,
+                price: 12,
                 description:
                     "The toilet loses sight of you for a few seconds."
             },
             {
-                id: "teleport",
-                name: "Teleport",
-                icon: "🌀",
-                price: 6,
+                id: "wallCutter",
+                name: "Wall Cutter",
+                icon: "✂️",
+                price: 15,
                 description:
-                    "Pause the chase and choose where to teleport."
+                    "Pass through maze walls for 2 seconds."
             }
         ];
 
@@ -122,7 +122,7 @@ export class Achievements {
             freezeBomb: 0,
             shield: 0,
             invisibilityCloak: 0,
-            teleport: 0
+            wallCutter: 0
         };
     }
 
@@ -170,6 +170,10 @@ export class Achievements {
                             savedInventory[itemId]
                         ) || 0
                     );
+            }
+
+            if (!("wallCutter" in savedInventory) && savedInventory.teleport) {
+                inventory.wallCutter = Math.max(0, Number(savedInventory.teleport) || 0);
             }
 
             return {

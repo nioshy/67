@@ -109,8 +109,12 @@ export class Renderer {
 
         this.drawCarrot(game);
         this.drawBananas(game);
+        this.drawSewerHatches(game);
 
         this.drawLaser(game);
+        this.drawPlunger(game);
+        this.drawMagneticFlush(game);
+        this.drawDecoyDuck(game);
 
         this.drawPlayer(game);
         this.drawEnemy(game);
@@ -634,6 +638,37 @@ export class Renderer {
         this.ctx.restore();
     }
 
+    drawPlunger(game) {
+        if (!game.plunger) return;
+        const t = this.tile(game, game.plunger.x, game.plunger.y);
+        this.ctx.save();
+        this.ctx.font = `${Math.max(20, t.h * 0.5)}px system-ui`;
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText("🪠", t.x + t.w / 2, t.y + t.h / 2);
+        this.ctx.restore();
+    }
+
+    drawMagneticFlush(game) {
+        if (!game.magneticFlush) return;
+        const player = this.tile(game, game.player.x, game.player.y);
+        const enemy = this.tile(game, game.enemy.x, game.enemy.y);
+        const pulse = 0.45 + Math.sin(performance.now() * 0.025) * 0.25;
+        this.ctx.save();
+        this.ctx.strokeStyle = "#65d8ff";
+        this.ctx.lineWidth = 4;
+        this.ctx.globalAlpha = pulse;
+        this.ctx.setLineDash([10, 8]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(player.x + player.w / 2, player.y + player.h / 2);
+        this.ctx.lineTo(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2);
+        this.ctx.stroke();
+        this.ctx.font = `${Math.max(20, player.h * 0.45)}px system-ui`;
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("🧲", player.x + player.w / 2, player.y - 3);
+        this.ctx.restore();
+    }
+
     drawEntity(
         game,
         e,
@@ -772,13 +807,14 @@ export class Renderer {
         if (game.shieldCharges > 0) {
             this.ctx.save();
 
-            this.ctx.strokeStyle =
-                "#4fdcff";
+            const goldenShield = game.run?.total("goldenShield") > 0;
+            const shieldColor = goldenShield ? "#ffd43b" : "#4fdcff";
+
+            this.ctx.strokeStyle = shieldColor;
 
             this.ctx.lineWidth = 4;
 
-            this.ctx.shadowColor =
-                "#4fdcff";
+            this.ctx.shadowColor = shieldColor;
 
             this.ctx.shadowBlur = 15;
 
@@ -796,6 +832,12 @@ export class Renderer {
             );
 
             this.ctx.stroke();
+
+            if (goldenShield) {
+                this.ctx.globalAlpha = 0.14;
+                this.ctx.fillStyle = "#ffd43b";
+                this.ctx.fill();
+            }
 
             this.ctx.restore();
         }
@@ -825,6 +867,55 @@ export class Renderer {
 
             this.ctx.restore();
         }
+
+        if (game.wallCutterTimer > 0) {
+            this.ctx.save();
+            this.ctx.strokeStyle = "#d987ff";
+            this.ctx.lineWidth = 4;
+            this.ctx.setLineDash([7, 5]);
+            this.ctx.shadowColor = "#b54cff";
+            this.ctx.shadowBlur = 12;
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, Math.min(t.w, t.h) * 0.4, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.font = `${Math.max(15, t.h * 0.3)}px system-ui`;
+            this.ctx.textAlign = "center";
+            this.ctx.fillText("✂️", cx, t.y);
+            this.ctx.restore();
+        }
+
+        if (game.playerTrapTimer > 0) {
+            this.ctx.save();
+            this.ctx.font = `${Math.max(20, t.h * 0.45)}px system-ui`;
+            this.ctx.textAlign = "center";
+            this.ctx.fillText("⛓️", cx, cy + t.h * 0.38);
+            this.ctx.restore();
+        }
+    }
+
+    drawSewerHatches(game) {
+        for (const hatch of game.sewerHatches || []) {
+            if (!hatch.active) continue;
+            const t = this.tile(game, hatch.x, hatch.y);
+            this.ctx.save();
+            this.ctx.font = `${Math.max(22, t.h * 0.58)}px system-ui`;
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText("🕳️", t.x + t.w / 2, t.y + t.h / 2);
+            this.ctx.restore();
+        }
+    }
+
+    drawDecoyDuck(game) {
+        if (!game.decoyDuck) return;
+        const fake = { x: game.decoyDuck.x, y: game.decoyDuck.y };
+        this.drawEntity(game, fake, game.enemy.image, 1.25, 1.35, 0, 1, 0.9);
+        const t = this.tile(game, fake.x, fake.y);
+        this.ctx.save();
+        this.ctx.font = `${Math.max(17, t.h * 0.35)}px system-ui`;
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("🦆", t.x + t.w / 2, t.y + 3);
+        this.ctx.restore();
     }
 
     drawEnemy(game) {
@@ -852,6 +943,7 @@ export class Renderer {
                               )
                       )
                 : 1;
+        const decoyAlpha = game.decoyDuck ? 0.28 : 1;
 
         this.drawEntity(
             game,
@@ -864,8 +956,45 @@ export class Renderer {
                     0.01
             ) * 2,
             1,
-            flashAlpha
+            flashAlpha * decoyAlpha
         );
+
+        if (game.doubleFlushPhase === "warning" || game.doubleFlushPhase === "active") {
+            const t = this.tile(game, e.x, e.y);
+            const active = game.doubleFlushPhase === "active";
+            this.ctx.save();
+            this.ctx.strokeStyle = active ? "#ff5b28" : "#ffe04b";
+            this.ctx.lineWidth = active ? 7 : 4;
+            this.ctx.globalAlpha = 0.6 + Math.sin(performance.now() * 0.03) * 0.25;
+            this.ctx.shadowColor = this.ctx.strokeStyle;
+            this.ctx.shadowBlur = active ? 22 : 12;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                t.x + t.w / 2,
+                t.y + t.h / 2,
+                Math.min(t.w, t.h) * 0.55,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
+
+        if (game.enemyGear?.length) {
+            const t = this.tile(game, e.x, e.y);
+            const icons = game.enemyGear.map(item => item.icon).join("");
+
+            this.ctx.save();
+            this.ctx.globalAlpha = decoyAlpha;
+            this.ctx.font = `${Math.max(14, t.h * 0.27)}px system-ui`;
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "bottom";
+            this.ctx.lineWidth = Math.max(2, t.h * 0.05);
+            this.ctx.strokeStyle = "rgba(0, 0, 0, .9)";
+            this.ctx.strokeText(icons, t.x + t.w / 2, t.y + 2);
+            this.ctx.fillText(icons, t.x + t.w / 2, t.y + 2);
+            this.ctx.restore();
+        }
 
         if (
             e.freezeTimer > 0

@@ -3,7 +3,7 @@ export const TOILET_GEAR = [
         id: "armor",
         icon: "🛡️",
         name: "Chrome Armor",
-        description: "Ignores bananas and Freeze Bombs.",
+        description: "Blocks three banana or Freeze Bomb hits, then breaks.",
         minLevel: 2
     },
     {
@@ -21,6 +21,13 @@ export const TOILET_GEAR = [
         minLevel: 3
     },
     {
+        id: "plungerCannon",
+        icon: "🪠",
+        name: "Plunger Cannon",
+        description: "Fires a fast corridor-following plunger. Shields block it.",
+        minLevel: 3
+    },
+    {
         id: "tracking",
         icon: "📡",
         name: "Tracking Antenna",
@@ -33,6 +40,41 @@ export const TOILET_GEAR = [
         name: "Wrecking Ball",
         description: "Physical catches smash through shields. Lasers do not.",
         minLevel: 6
+    },
+    {
+        id: "magneticFlush",
+        icon: "🧲",
+        name: "Magnetic Flush",
+        description: "Warns, then pulls you one floor tile toward the toilet.",
+        minLevel: 5
+    },
+    {
+        id: "springSeat",
+        icon: "🦘",
+        name: "Spring Seat",
+        description: "Occasionally jumps over one wall toward you.",
+        minLevel: 7
+    },
+    {
+        id: "doubleFlush",
+        icon: "⚡",
+        name: "Double Flush",
+        description: "After a 0.9s warning, moves 60% faster for 1.5s.",
+        minLevel: 5
+    },
+    {
+        id: "sewerHatch",
+        icon: "🕳️",
+        name: "Sewer Hatch",
+        description: "Places floor traps that hold the player for 1.5 seconds.",
+        minLevel: 6
+    },
+    {
+        id: "decoyDuck",
+        icon: "🦆",
+        name: "Decoy Duck",
+        description: "Creates a fake toilet for 2.5s while the real one fades.",
+        minLevel: 7
     },
     {
         id: "ghost",
@@ -56,7 +98,14 @@ export function rollToiletGear(level) {
     const count = 1 + Math.floor(level / 5);
     const result = [];
     while (result.length < count && available.length) {
-        result.push(available.splice(Math.floor(Math.random() * available.length), 1)[0]);
+        const item = available.splice(Math.floor(Math.random() * available.length), 1)[0];
+        result.push(item);
+
+        if (item.id === "ghost" || item.id === "springSeat") {
+            const incompatibleId = item.id === "ghost" ? "springSeat" : "ghost";
+            const incompatibleIndex = available.findIndex(gear => gear.id === incompatibleId);
+            if (incompatibleIndex >= 0) available.splice(incompatibleIndex, 1);
+        }
     }
     return result;
 }

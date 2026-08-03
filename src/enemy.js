@@ -17,6 +17,7 @@ export class Enemy {
         this.slowTimer = 0;
         this.slowMultiplier = 1;
         this.gearSpeedMultiplier = 1;
+        this.burstSpeedMultiplier = 1;
         this.ghostMode = false;
 
         this.image = new Image();
@@ -92,6 +93,7 @@ export class Enemy {
         this.slowTimer = 0;
         this.slowMultiplier = 1;
         this.gearSpeedMultiplier = 1;
+        this.burstSpeedMultiplier = 1;
         this.ghostMode = false;
     }
 
@@ -255,7 +257,8 @@ export class Enemy {
         const effectiveSpeed =
             this.speed *
             this.slowMultiplier *
-            this.gearSpeedMultiplier;
+            this.gearSpeedMultiplier *
+            this.burstSpeedMultiplier;
 
         const movement =
             Math.min(
@@ -291,6 +294,7 @@ export class Enemy {
             this.speed *
                 this.slowMultiplier *
                 this.gearSpeedMultiplier *
+                this.burstSpeedMultiplier *
                 deltaTime,
             distance
         );

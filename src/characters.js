@@ -36,9 +36,9 @@ export const CHARACTERS = [
         name: "Napoleon",
         tagline: "A sneaky cat that can drink from a toilet. 🤮",
         ability: "Sneaky Cat",
-        stats: ["Standard speed", "10% Sneaky chance per step", "Sneaky: invisible for 1.0s"],
+        stats: ["Standard speed", "5% Sneaky chance per step", "Sneaky: invisible for 1.0s"],
         speedMultiplier: 1,
-        sneakyChance: 0.1,
+        sneakyChance: 0.05,
         portrait: "./assets/characters/napoleon/portrait.png",
         victory: "./assets/characters/napoleon/victory.png"
     }

@@ -1500,6 +1500,23 @@ button:active {
 .run-stat-value { color: #fff; font-weight: 900; white-space: nowrap; }
 .run-stat-empty { color: #91a0af; font-style: italic; }
 .run-stat-stack { color: #7fd4ff; }
+.toilet-equipment-title {
+    margin-top: 9px;
+    padding-top: 7px;
+    border-top: 1px solid #465565;
+    color: #ff9b72;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .06em;
+}
+.toilet-equipment-list { margin-top: 4px; }
+.toilet-equipment-item {
+    padding: 2px 0;
+    color: #f4f7fb;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.25;
+}
 
 @media (pointer: coarse) and (orientation: landscape) {
     .play-area { grid-template-columns: minmax(0, 1fr) 185px; gap: 6px; }
@@ -1507,6 +1524,9 @@ button:active {
     .run-stats-title { font-size: 11px; }
     .run-stats-subtitle { margin-bottom: 3px; font-size: 8px; }
     .run-stat { padding: 1px 0; }
+    .toilet-equipment-title { margin-top: 4px; padding-top: 3px; font-size: 8px; }
+    .toilet-equipment-list { margin-top: 1px; }
+    .toilet-equipment-item { padding: 1px 0; font-size: 8px; }
 }
 
 /* =========================================================
@@ -1535,6 +1555,9 @@ button:active {
         margin-bottom: 4px;
         font-size: 7px;
     }
+
+    .toilet-equipment-title { margin-top: 3px; padding-top: 2px; font-size: 7px; }
+    .toilet-equipment-item { font-size: 7px; }
 
     .character-selection,
     .reward-screen,
