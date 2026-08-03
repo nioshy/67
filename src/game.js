@@ -596,6 +596,10 @@ function resetEntity(
     entity.targetY = y;
 
     entity.moving = false;
+
+    if ("pendingStepCount" in entity) {
+        entity.pendingStepCount = 0;
+    }
 }
 
 
@@ -623,6 +627,18 @@ function rewardStackCount(id) {
     return run.rewards.filter(reward => reward.id === id).length;
 }
 
+function getPlayerBaseSpeed(runnerBonus = run.total("runner")) {
+    return 7 * game.character.speedMultiplier * (1 + runnerBonus);
+}
+
+function getRunShieldCharges(extraCharges = 0) {
+    if (run.total("goldenShield") > 0) {
+        return 2;
+    }
+
+    return Math.floor(run.total("shield") + extraCharges);
+}
+
 function formatRewardValue(reward, total = reward.value) {
     const headStartMultiplier = game.character.headStartMultiplier || 1;
     const formats = {
@@ -631,20 +647,67 @@ function formatRewardValue(reward, total = reward.value) {
         shield: value => `+${Math.floor(value)} shield charge${value === 1 ? "" : "s"} per maze`,
         goldenShield: value => `+${Math.floor(value)} shield charges per maze`,
         carrotLuck: value => `+${Math.floor(value)} carrot${value === 1 ? "" : "s"} per victory`,
-        toiletSlow: value => `−${Math.round(value * 100)}% toilet speed`,
+        toiletSlow: value =>
+            `−${Math.round(Math.min(0.35, value) * 100)}% toilet speed`,
         extraFreeze: value => `+${value.toFixed(1)}s Freeze Bomb duration`
     };
     return formats[reward.id](total);
 }
 
-function updateRunStats() {
-    const speed = Math.round(
-        (game.character.speedMultiplier * (1 + run.total("runner")) - 1) * 100
+function formatProjectedRewardValue(reward) {
+    if (reward.id === "runner") {
+        const projectedSpeed = getPlayerBaseSpeed(
+            run.total("runner") + reward.value
+        );
+        const projectedPercent = Math.round((projectedSpeed / 7 - 1) * 100);
+        return `${projectedPercent >= 0 ? "+" : ""}${projectedPercent}% final speed (${projectedSpeed.toFixed(2)} tiles/s)`;
+    }
+
+    if (reward.id === "shield" || reward.id === "goldenShield") {
+        const charges = reward.id === "goldenShield"
+            ? 2
+            : getRunShieldCharges(reward.value);
+        return `${charges} shield charge${charges === 1 ? "" : "s"} per maze`;
+    }
+
+    const projectedTotal = run.total(reward.id) + reward.value;
+    const formattedValue = formatRewardValue(reward, projectedTotal);
+
+    if (reward.id === "toiletSlow" && projectedTotal >= 0.35) {
+        return `${formattedValue} (MAX)`;
+    }
+
+    return formattedValue;
+}
+
+function formatRewardSelectionValue(reward) {
+    if (reward.id !== "toiletSlow") {
+        return formatRewardValue(reward);
+    }
+
+    const currentApplied = Math.min(0.35, run.total("toiletSlow"));
+    const projectedApplied = Math.min(
+        0.35,
+        run.total("toiletSlow") + reward.value
     );
+    const effectiveGain = projectedApplied - currentApplied;
+
+    if (effectiveGain <= 0.0001) {
+        return "Cap already reached — no additional slowdown";
+    }
+
+    const cappedLabel = effectiveGain < reward.value ? " (capped)" : "";
+    return `−${Math.round(effectiveGain * 100)}% additional toilet speed${cappedLabel}`;
+}
+
+function updateRunStats() {
+    const speed = Math.round((getPlayerBaseSpeed() / 7 - 1) * 100);
     const headStart =
         run.total("headStart") * (game.character.headStartMultiplier || 1);
     const shieldStacks =
-        rewardStackCount("shield") + rewardStackCount("goldenShield");
+        run.total("goldenShield") > 0
+            ? 1
+            : rewardStackCount("shield");
     const carrots = Math.floor(run.total("carrotLuck"));
     const slow = Math.min(35, Math.round(run.total("toiletSlow") * 100));
     const freeze = run.total("extraFreeze");
@@ -714,7 +777,18 @@ function showRewardChoices() {
     overlay.classList.add("hidden");
     rewardChoices.innerHTML = "";
 
-    for (const reward of run.createChoices(3, game.character.lucky === true)) {
+    const excludedRewardIds = [];
+    if (run.total("toiletSlow") >= 0.3499) {
+        excludedRewardIds.push("toiletSlow");
+    }
+
+    for (
+        const reward of run.createChoices(
+            3,
+            game.character.lootProfile || "normal",
+            excludedRewardIds
+        )
+    ) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "reward-card";
@@ -725,8 +799,8 @@ function showRewardChoices() {
             <span class="reward-name">${reward.name}</span>
             <span class="reward-description">${reward.description}</span>
             <span class="reward-stat">
-                ${formatRewardValue(reward)}
-                <span class="reward-total">After picking: ${formatRewardValue(reward, run.total(reward.id) + reward.value)}</span>
+                ${formatRewardSelectionValue(reward)}
+                <span class="reward-total">After picking: ${formatProjectedRewardValue(reward)}</span>
             </span>
         `;
         button.addEventListener("click", () => {
@@ -755,6 +829,10 @@ function triggerLaser() {
 
 function updateLaser(deltaTime) {
     if (!hasEnemyGear("laser")) return;
+
+    if (game.enemyStartDelay > 0 || game.enemy.isHarmless()) {
+        return;
+    }
 
     if (!game.laser) {
         game.laser = { phase: "cooldown", timer: 3.5, cooldown: 0 };
@@ -798,10 +876,23 @@ function checkCharacterStepPerk() {
 
     game.lastPlayerStepKey = stepKey;
 
-    if (
-        game.character.sneakyChance &&
-        Math.random() < game.character.sneakyChance
-    ) {
+    const completedSteps = Math.max(
+        1,
+        game.player.pendingStepCount || 0
+    );
+    game.player.pendingStepCount = 0;
+
+    let sneakyTriggered = false;
+    for (let step = 0; step < completedSteps; step++) {
+        if (
+            game.character.sneakyChance &&
+            Math.random() < game.character.sneakyChance
+        ) {
+            sneakyTriggered = true;
+        }
+    }
+
+    if (sneakyTriggered) {
         game.invisible = true;
         game.invisibilityTimer = Math.max(game.invisibilityTimer, 1);
         game.lastSeenPosition = {
@@ -919,12 +1010,9 @@ function resetRunEffects() {
 
     game.enemy.ghostMode = hasEnemyGear("ghost");
 
-    game.player.baseSpeed =
-        7 * game.character.speedMultiplier * (1 + run.total("runner"));
+    game.player.baseSpeed = getPlayerBaseSpeed();
     game.player.speed = game.player.baseSpeed;
-    game.shieldCharges = Math.floor(
-        run.total("shield") + run.total("goldenShield")
-    );
+    game.shieldCharges = getRunShieldCharges();
     game.enemyStartDelay =
         run.total("headStart") * (game.character.headStartMultiplier || 1);
     game.laser = null;
@@ -1330,6 +1418,8 @@ function finishTeleport(
         x,
         y
     );
+
+    game.lastPlayerStepKey = `${x},${y}`;
 
     achievements.useItem(
         "teleport"
@@ -1913,15 +2003,14 @@ function update(
         toiletTarget = game.player;
     }
 
-    if (game.enemyStartDelay > 0) {
-        game.enemyStartDelay = Math.max(0, game.enemyStartDelay - deltaTime);
-    } else {
-        game.enemy.update(
-            deltaTime,
-            maze,
-            toiletTarget
-        );
-    }
+    const enemyWaiting = game.enemyStartDelay > 0;
+    game.enemyStartDelay = Math.max(0, game.enemyStartDelay - deltaTime);
+    game.enemy.update(
+        deltaTime,
+        maze,
+        toiletTarget,
+        enemyWaiting
+    );
 
     updateLaser(deltaTime);
 

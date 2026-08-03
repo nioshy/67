@@ -598,7 +598,12 @@ export class Renderer {
 
     drawLaser(game) {
         const laser = game.laser;
-        if (!laser || (laser.phase !== "warning" && laser.phase !== "firing")) {
+        if (
+            !laser ||
+            game.enemyStartDelay > 0 ||
+            game.enemy.isHarmless() ||
+            (laser.phase !== "warning" && laser.phase !== "firing")
+        ) {
             return;
         }
 

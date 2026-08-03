@@ -12,6 +12,7 @@ export class Player {
         this.turboTimer = 0;
 
         this.moving = false;
+        this.pendingStepCount = 0;
         this.facing = 1;
 
         this.image = new Image();
@@ -21,11 +22,12 @@ export class Player {
     resetEffects() {
         this.speed = this.baseSpeed;
         this.turboTimer = 0;
+        this.pendingStepCount = 0;
     }
 
     activateTurbo(duration = 8) {
         this.turboTimer = duration;
-        this.speed = 10.5;
+        this.speed = this.baseSpeed * 1.5;
     }
 
     move(dx, dy, maze, maximumSteps = 1) {
@@ -57,6 +59,7 @@ export class Player {
         this.targetX = nextX;
         this.targetY = nextY;
         this.moving = true;
+        this.pendingStepCount = movedSteps;
 
         if (dx !== 0) {
             this.facing = dx;

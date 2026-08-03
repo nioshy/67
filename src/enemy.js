@@ -127,6 +127,7 @@ export class Enemy {
 
     isHarmless() {
         return (
+            this.confusedTimer > 0 ||
             this.freezeTimer > 0 ||
             this.slowTimer > 0
         );
@@ -135,48 +136,36 @@ export class Enemy {
     update(
         deltaTime,
         maze,
-        player
+        player,
+        movementPaused = false
     ) {
-        /*
-         * Confused by Napoleon's
-         * Sneaky step.
-         */
-        if (this.confusedTimer > 0) {
-            this.confusedTimer -=
-                deltaTime;
+        const wasConfused = this.confusedTimer > 0;
+        const wasFrozen = this.freezeTimer > 0;
 
-            if (this.confusedTimer < 0) {
-                this.confusedTimer = 0;
-            }
+        this.confusedTimer = Math.max(
+            0,
+            this.confusedTimer - deltaTime
+        );
+        this.freezeTimer = Math.max(
+            0,
+            this.freezeTimer - deltaTime
+        );
 
-            return;
-        }
-
-        /*
-         * Frozen toilet.
-         */
-        if (this.freezeTimer > 0) {
-            this.freezeTimer -=
-                deltaTime;
-
-            if (this.freezeTimer < 0) {
-                this.freezeTimer = 0;
-            }
-
-            return;
-        }
-
-        /*
-         * Banana slow effect.
-         */
         if (this.slowTimer > 0) {
-            this.slowTimer -=
-                deltaTime;
+            this.slowTimer = Math.max(
+                0,
+                this.slowTimer - deltaTime
+            );
 
-            if (this.slowTimer <= 0) {
-                this.slowTimer = 0;
+            if (this.slowTimer === 0) {
                 this.slowMultiplier = 1;
             }
+        }
+
+        /* Freeze and confusion stop movement, but every status
+         * timer continues to count down concurrently. */
+        if (wasConfused || wasFrozen || movementPaused) {
+            return;
         }
 
         /*

@@ -36,6 +36,7 @@ const REWARDS = [
         name: "Golden Shield",
         description: "Start each maze protected from two catches.",
         forcedRarity: "legendary",
+        repeatable: false,
         values: [2, 2, 2, 2, 2]
     },
     {
@@ -61,15 +62,28 @@ const REWARDS = [
     }
 ];
 
-function weightedRarity(level, lucky = false) {
+function weightedRarity(level, lootProfile = "normal") {
     const luck = Math.min(14, Math.max(0, level - 1) * 0.8);
-    const baseWeights = lucky ? [25, 26, 27, 15, 7] : RARITIES.map(rarity => rarity.weight);
-    const minimumCommonWeight = lucky ? 10 : 25;
-    const weights = baseWeights.map((weight, index) =>
-        index === 0
-            ? Math.max(minimumCommonWeight, weight - luck)
-            : weight + luck * index / 10
-    );
+    const weights = [
+        55 - luck,
+        26 + luck * 0.1,
+        12 + luck * 0.2,
+        5 + luck * 0.3,
+        2 + luck * 0.4
+    ];
+
+    const profileMultipliers = {
+        lucky: [1.15, 1.1, 1.05],
+        unlucky: [0.85, 0.9, 0.95]
+    };
+    const multipliers = profileMultipliers[lootProfile];
+
+    if (multipliers) {
+        weights[2] *= multipliers[0];
+        weights[3] *= multipliers[1];
+        weights[4] *= multipliers[2];
+        weights[0] = 100 - weights[1] - weights[2] - weights[3] - weights[4];
+    }
     let roll = Math.random() * weights.reduce((sum, value) => sum + value, 0);
     return RARITIES.find((rarity, index) => ((roll -= weights[index]) <= 0)) || RARITIES[0];
 }
@@ -84,14 +98,19 @@ export class RunSystem {
         this.rewards = [];
     }
 
-    createChoices(count = 3, lucky = false) {
+    createChoices(count = 3, lootProfile = "normal", excludedIds = []) {
         const ownedRewardIds = new Set(this.rewards.map(reward => reward.id));
+        const excludedRewardIds = new Set(excludedIds);
+        const ownsGoldenShield = ownedRewardIds.has("goldenShield");
         const pool = REWARDS.filter(
-            reward => reward.repeatable !== false || !ownedRewardIds.has(reward.id)
+            reward =>
+                !excludedRewardIds.has(reward.id) &&
+                !(ownsGoldenShield && (reward.id === "shield" || reward.id === "goldenShield")) &&
+                (reward.repeatable !== false || !ownedRewardIds.has(reward.id))
         );
         const choices = [];
         while (choices.length < count && pool.length) {
-            const rarity = weightedRarity(this.level, lucky);
+            const rarity = weightedRarity(this.level, lootProfile);
             const eligible = pool.filter(
                 reward => !reward.forcedRarity || reward.forcedRarity === rarity.id
             );
@@ -104,6 +123,14 @@ export class RunSystem {
     }
 
     choose(reward) {
+        if (reward.id === "goldenShield") {
+            this.rewards = this.rewards.filter(
+                ownedReward =>
+                    ownedReward.id !== "shield" &&
+                    ownedReward.id !== "goldenShield"
+            );
+        }
+
         this.rewards.push(reward);
         this.level += 1;
     }
