@@ -536,7 +536,11 @@ button:active {
 
 .rabbit-shop-content {
     min-width: 0;
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 
     padding: 20px;
 }
@@ -703,6 +707,7 @@ button:active {
     padding-top: 10px;
 
     border-top: 1px solid #33414f;
+    background: #0b1219;
 }
 
 .shop-inventory-summary {
@@ -1500,6 +1505,259 @@ button:active {
     .run-stats-title { font-size: 11px; }
     .run-stats-subtitle { margin-bottom: 3px; font-size: 8px; }
     .run-stat { padding: 1px 0; }
+}
+
+/* =========================================================
+   IPHONE LANDSCAPE
+   Full-screen, independently scrolling menus
+   ========================================================= */
+
+@media (orientation: landscape) and (max-height: 500px) {
+    .play-area {
+        grid-template-columns: minmax(0, 1fr) 140px;
+        gap: 5px;
+    }
+
+    .run-stats {
+        padding: 5px 6px;
+        font-size: 8px;
+    }
+
+    .run-character,
+    .run-stats-title {
+        font-size: 9px;
+    }
+
+    .run-character-perk,
+    .run-stats-subtitle {
+        margin-bottom: 4px;
+        font-size: 7px;
+    }
+
+    .character-selection,
+    .reward-screen,
+    .rabbit-shop {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100dvh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        padding:
+            max(6px, env(safe-area-inset-top))
+            max(10px, env(safe-area-inset-right))
+            max(6px, env(safe-area-inset-bottom))
+            max(10px, env(safe-area-inset-left));
+    }
+
+    .character-selection-panel,
+    .reward-panel {
+        width: min(100%, 900px);
+        margin: 0 auto;
+    }
+
+    .character-selection-panel h2,
+    .reward-panel h2 {
+        font-size: 20px;
+    }
+
+    .character-selection-panel > p,
+    .reward-panel > p {
+        margin: 2px 0 7px;
+        font-size: 10px;
+    }
+
+    .character-choices {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .character-card {
+        padding: 5px;
+        border-width: 2px;
+    }
+
+    .character-card img {
+        height: 82px;
+    }
+
+    .character-name {
+        margin-top: 3px;
+        font-size: 14px;
+    }
+
+    .character-ability,
+    .character-tagline,
+    .character-stats,
+    .character-select-label {
+        font-size: 8px;
+    }
+
+    .character-tagline {
+        min-height: 31px;
+        margin: 3px 0;
+    }
+
+    .character-stats {
+        gap: 0;
+        margin-bottom: 4px;
+    }
+
+    .character-select-label {
+        padding: 4px 2px;
+    }
+
+    .reward-screen {
+        display: block;
+    }
+
+    .reward-choices {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .reward-card {
+        min-height: 0;
+        padding: 7px;
+        border-width: 2px;
+    }
+
+    .reward-icon {
+        font-size: 28px;
+    }
+
+    .reward-rarity {
+        margin: 2px 0;
+        font-size: 9px;
+    }
+
+    .reward-name {
+        margin-bottom: 3px;
+        font-size: 13px;
+    }
+
+    .reward-description,
+    .reward-stat {
+        font-size: 9px;
+    }
+
+    .reward-stat {
+        margin-top: 5px;
+        padding: 4px;
+    }
+
+    .reward-total {
+        margin-top: 2px;
+        font-size: 8px;
+    }
+
+    .rabbit-shop {
+        align-items: stretch;
+        justify-content: center;
+    }
+
+    .rabbit-shop-card {
+        grid-template-columns: 125px minmax(0, 1fr);
+        width: min(100%, 900px);
+        height: 100%;
+        max-height: none;
+    }
+
+    .rabbit-shop-character,
+    .rabbit-shop-image {
+        height: 100%;
+        min-height: 0;
+    }
+
+    .rabbit-shop-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding: 6px 8px;
+    }
+
+    .rabbit-shop-header {
+        margin-bottom: 4px;
+    }
+
+    .rabbit-shop-header h2 {
+        font-size: 17px;
+    }
+
+    .rabbit-shop-header p {
+        display: none;
+    }
+
+    .shop-carrots {
+        padding: 4px 7px;
+        font-size: 11px;
+    }
+
+    .shop-items {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    .shop-item {
+        grid-template-columns: 26px minmax(0, 1fr);
+        gap: 4px;
+        padding: 4px;
+    }
+
+    .shop-item-icon {
+        width: 26px;
+        height: 26px;
+        font-size: 18px;
+    }
+
+    .shop-item-name {
+        font-size: 9px;
+    }
+
+    .shop-item-description {
+        min-height: 0;
+        font-size: 7px;
+    }
+
+    .shop-item-bottom {
+        margin-top: 2px;
+    }
+
+    .shop-item-owned,
+    .shop-buy-button {
+        font-size: 7px;
+    }
+
+    .shop-buy-button {
+        padding: 3px 5px;
+    }
+
+    .shop-message {
+        min-height: 12px;
+        margin: 2px 0;
+        font-size: 8px;
+    }
+
+    .shop-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        margin-top: auto;
+        padding-top: 4px;
+    }
+
+    .shop-inventory-summary {
+        font-size: 7px;
+    }
+
+    #next-maze-button {
+        min-height: 32px;
+        padding: 5px 10px;
+        font-size: 10px;
+    }
 }
 
 @media (max-width: 760px) and (orientation: portrait) {
