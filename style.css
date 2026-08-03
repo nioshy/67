@@ -1383,3 +1383,37 @@ button:active {
         grid-template-columns: 1fr;
     }
 }
+.reward-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(4, 7, 12, .92);
+}
+
+.reward-panel { width: min(820px, 96%); text-align: center; color: white; }
+.reward-panel h2 { margin: 0 0 6px; color: #ffe06a; font-size: clamp(22px, 4vw, 38px); }
+.reward-panel > p { margin: 0 0 20px; color: #c8d1dd; }
+.reward-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.reward-card {
+    min-height: 220px;
+    padding: 18px 14px;
+    border: 3px solid var(--rarity);
+    border-radius: 18px;
+    color: white;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 22%, #18202a), #10151c);
+    box-shadow: 0 7px 0 #05070a, 0 0 25px color-mix(in srgb, var(--rarity) 35%, transparent);
+}
+.reward-card:hover { transform: translateY(-4px); }
+.reward-icon { display: block; font-size: 48px; }
+.reward-rarity { display: block; margin: 8px 0; color: var(--rarity); font-weight: 900; text-transform: uppercase; }
+.reward-name { display: block; margin-bottom: 8px; font-size: 19px; font-weight: 900; }
+.reward-description { display: block; color: #d8dee7; font-size: 13px; }
+
+@media (max-width: 650px) {
+    .reward-choices { grid-template-columns: 1fr; gap: 8px; }
+    .reward-card { min-height: 0; padding: 10px; }
+    .reward-icon { display: inline; margin-right: 8px; font-size: 28px; }
+}

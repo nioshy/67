@@ -110,6 +110,8 @@ export class Renderer {
         this.drawCarrot(game);
         this.drawBananas(game);
 
+        this.drawLaser(game);
+
         this.drawPlayer(game);
         this.drawEnemy(game);
 
@@ -583,6 +585,39 @@ export class Renderer {
 
             this.ctx.restore();
         }
+    }
+
+    drawLaser(game) {
+        const laser = game.laser;
+        if (!laser || (laser.phase !== "warning" && laser.phase !== "firing")) {
+            return;
+        }
+
+        const tw = this.canvas.width / game.maze.width;
+        const th = this.canvas.height / game.maze.height;
+        const firing = laser.phase === "firing";
+
+        this.ctx.save();
+        this.ctx.strokeStyle = firing ? "#fff" : "#ff2a2a";
+        this.ctx.lineWidth = firing ? 11 : 3;
+        this.ctx.globalAlpha = firing ? 0.95 : 0.45 + Math.sin(performance.now() * 0.025) * 0.25;
+        this.ctx.shadowColor = "#ff0000";
+        this.ctx.shadowBlur = firing ? 26 : 12;
+        this.ctx.setLineDash(firing ? [] : [12, 8]);
+        this.ctx.beginPath();
+
+        if (laser.horizontal) {
+            const y = (laser.coordinate + 0.5) * th;
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+        } else {
+            const x = (laser.coordinate + 0.5) * tw;
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+        }
+
+        this.ctx.stroke();
+        this.ctx.restore();
     }
 
     drawEntity(

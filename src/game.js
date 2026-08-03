@@ -3,6 +3,8 @@ import { Renderer } from "./renderer.js";
 import { Player } from "./player.js";
 import { Enemy } from "./enemy.js";
 import { Achievements } from "./achievements.js";
+import { RunSystem } from "./run-system.js";
+import { rollToiletGear } from "./toilet-gear.js";
 
 const $ = id =>
     document.getElementById(id);
@@ -90,6 +92,9 @@ const shopMessage =
 const nextMazeButton =
     $("next-maze-button");
 
+const rewardScreen = $("reward-screen");
+const rewardChoices = $("reward-choices");
+
 
 /* =========================================================
    GAME OBJECTS
@@ -103,6 +108,8 @@ const maze =
 
 const achievements =
     new Achievements();
+
+const run = new RunSystem();
 
 const game = {
     maze,
@@ -132,7 +139,11 @@ const game = {
     invisibilityTimer: 0,
     lastSeenPosition: null,
 
-    teleportPauseStart: 0
+    teleportPauseStart: 0,
+    run,
+    enemyGear: [],
+    enemyStartDelay: 0,
+    laser: null
 };
 
 let previous =
@@ -597,6 +608,85 @@ function updateCarrots() {
     }
 }
 
+function hasEnemyGear(id) {
+    return game.enemyGear.some(item => item.id === id);
+}
+
+function showRewardChoices() {
+    game.state = "reward";
+    overlay.classList.add("hidden");
+    rewardChoices.innerHTML = "";
+
+    for (const reward of run.createChoices()) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "reward-card";
+        button.style.setProperty("--rarity", reward.rarity.color);
+        button.innerHTML = `
+            <span class="reward-icon">${reward.icon}</span>
+            <span class="reward-rarity">${reward.rarity.name}</span>
+            <span class="reward-name">${reward.name}</span>
+            <span class="reward-description">${reward.description}</span>
+        `;
+        button.addEventListener("click", () => {
+            run.choose(reward);
+            rewardScreen.classList.add("hidden");
+            restart.textContent = "Play Again";
+            openRabbitShop(`${reward.icon} ${reward.name} added for this run!`);
+        });
+        rewardChoices.append(button);
+    }
+
+    rewardScreen.classList.remove("hidden");
+}
+
+function triggerLaser() {
+    const horizontal = Math.random() < 0.5;
+    game.laser = {
+        phase: "warning",
+        timer: 0.9,
+        cooldown: 0,
+        horizontal,
+        coordinate: horizontal ? Math.round(game.player.y) : Math.round(game.player.x)
+    };
+}
+
+function updateLaser(deltaTime) {
+    if (!hasEnemyGear("laser")) return;
+
+    if (!game.laser) {
+        game.laser = { phase: "cooldown", timer: 3.5, cooldown: 0 };
+    }
+
+    game.laser.timer -= deltaTime;
+    if (game.laser.timer > 0) return;
+
+    if (game.laser.phase === "cooldown") {
+        triggerLaser();
+        return;
+    }
+
+    if (game.laser.phase === "warning") {
+        game.laser.phase = "firing";
+        game.laser.timer = 0.22;
+
+        const hit = game.laser.horizontal
+            ? Math.abs(game.player.y - game.laser.coordinate) < 0.32
+            : Math.abs(game.player.x - game.laser.coordinate) < 0.32;
+
+        if (hit) {
+            if (game.shieldActive) {
+                game.shieldActive = false;
+            } else {
+                showResult("Zapped!", "The toilet's laser caught the 67 Kid.", true);
+            }
+        }
+        return;
+    }
+
+    game.laser = { phase: "cooldown", timer: 4.2, cooldown: 0 };
+}
+
 
 /* =========================================================
    CARROT
@@ -698,6 +788,16 @@ function resetRunEffects() {
 
     game.enemy.resetEffects();
 
+    game.enemy.speed *=
+        (hasEnemyGear("turboTank") ? 1.12 : 1) *
+        (1 - Math.min(0.35, run.total("toiletSlow")));
+
+    game.player.baseSpeed = 7 * (1 + run.total("runner"));
+    game.player.speed = game.player.baseSpeed;
+    game.shieldActive = run.total("shield") > 0;
+    game.enemyStartDelay = run.total("headStart");
+    game.laser = null;
+
     hideTeleportPrompt();
 }
 
@@ -727,6 +827,7 @@ function generateLevel() {
     maze.generate();
 
     game.enemy.choosePersonality();
+    game.enemyGear = rollToiletGear(run.level);
 
     game.exit =
         maze.findFurthest(
@@ -785,6 +886,16 @@ function generateLevel() {
             .personality
             .description ||
         "Can you escape before it catches you?";
+
+    if (game.enemyGear.length) {
+        personalityDescription.textContent +=
+            ` Gear: ${game.enemyGear.map(item => `${item.icon} ${item.name}`).join(" + ")}. ` +
+            game.enemyGear.map(item => item.description).join(" ");
+    } else {
+        personalityDescription.textContent += " No gear this time.";
+    }
+
+    personalityDescription.textContent += ` Run level ${run.level}.`;
 
     toiletPersonality.classList.remove(
         "hidden"
@@ -883,8 +994,14 @@ function usePowerup(
         itemId ===
         "freezeBomb"
     ) {
+        if (hasEnemyGear("armor")) {
+            achievements.useItem(itemId);
+            updatePowerupUI();
+            return;
+        }
+
         game.enemy.freeze(
-            3
+            3 + run.total("extraFreeze")
         );
 
         achievements.useItem(
@@ -1219,6 +1336,9 @@ function showResult(
         const streakResult =
             achievements.recordDefeat();
 
+        run.reset();
+        game.enemyGear = [];
+
         updateStreakUI();
 
         game.pendingCarrot =
@@ -1480,6 +1600,11 @@ function win() {
     const streakResult =
         achievements.recordWin();
 
+    const runBonusCarrots = Math.floor(run.total("carrotLuck"));
+    for (let index = 0; index < runBonusCarrots; index++) {
+        achievements.addCarrot();
+    }
+
     updateCarrots();
     updateStreakUI();
 
@@ -1567,7 +1692,7 @@ function win() {
      * to the rabbit shop.
      */
     restart.textContent =
-        "VISIT RABBIT'S SHOP 🐰";
+        "CHOOSE A RUN REWARD →";
 
     overlay.classList.remove(
         "hidden"
@@ -1636,11 +1761,25 @@ function update(
         }
     }
 
-    game.enemy.update(
-        deltaTime,
-        maze,
-        toiletTarget
-    );
+    if (hasEnemyGear("tracking")) {
+        toiletTarget = game.player;
+    }
+
+    if (game.enemyStartDelay > 0) {
+        game.enemyStartDelay = Math.max(0, game.enemyStartDelay - deltaTime);
+    } else {
+        game.enemy.update(
+            deltaTime,
+            maze,
+            toiletTarget
+        );
+    }
+
+    updateLaser(deltaTime);
+
+    if (game.state !== "playing") {
+        return;
+    }
 
     if (
         game.carrot
@@ -1693,6 +1832,11 @@ function update(
             distance <
             0.4
         ) {
+            if (hasEnemyGear("armor")) {
+                game.bananas.splice(index, 1);
+                continue;
+            }
+
             game.enemy.slow(
                 3,
                 0.45
@@ -2012,7 +2156,7 @@ restart.onclick =
             restart.textContent =
                 "Play Again";
 
-            openRabbitShop();
+            showRewardChoices();
 
             return;
         }
