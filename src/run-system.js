@@ -26,7 +26,17 @@ const REWARDS = [
         icon: "🛡️",
         name: "Pocket Shield",
         description: "Start each maze protected from one catch.",
+        forcedRarity: "rare",
+        repeatable: false,
         values: [1, 1, 1, 1, 1]
+    },
+    {
+        id: "goldenShield",
+        icon: "🌟",
+        name: "Golden Shield",
+        description: "Start each maze protected from two catches.",
+        forcedRarity: "legendary",
+        values: [2, 2, 2, 2, 2]
     },
     {
         id: "carrotLuck",
@@ -51,10 +61,14 @@ const REWARDS = [
     }
 ];
 
-function weightedRarity(level) {
+function weightedRarity(level, lucky = false) {
     const luck = Math.min(14, Math.max(0, level - 1) * 0.8);
-    const weights = RARITIES.map((rarity, index) =>
-        index === 0 ? Math.max(25, rarity.weight - luck) : rarity.weight + luck * index / 10
+    const baseWeights = lucky ? [25, 26, 27, 15, 7] : RARITIES.map(rarity => rarity.weight);
+    const minimumCommonWeight = lucky ? 10 : 25;
+    const weights = baseWeights.map((weight, index) =>
+        index === 0
+            ? Math.max(minimumCommonWeight, weight - luck)
+            : weight + luck * index / 10
     );
     let roll = Math.random() * weights.reduce((sum, value) => sum + value, 0);
     return RARITIES.find((rarity, index) => ((roll -= weights[index]) <= 0)) || RARITIES[0];
@@ -70,12 +84,19 @@ export class RunSystem {
         this.rewards = [];
     }
 
-    createChoices(count = 3) {
-        const pool = [...REWARDS];
+    createChoices(count = 3, lucky = false) {
+        const ownedRewardIds = new Set(this.rewards.map(reward => reward.id));
+        const pool = REWARDS.filter(
+            reward => reward.repeatable !== false || !ownedRewardIds.has(reward.id)
+        );
         const choices = [];
         while (choices.length < count && pool.length) {
-            const reward = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-            const rarity = weightedRarity(this.level);
+            const rarity = weightedRarity(this.level, lucky);
+            const eligible = pool.filter(
+                reward => !reward.forcedRarity || reward.forcedRarity === rarity.id
+            );
+            const reward = eligible[Math.floor(Math.random() * eligible.length)];
+            pool.splice(pool.indexOf(reward), 1);
             const rarityIndex = RARITIES.findIndex(item => item.id === rarity.id);
             choices.push({ ...reward, rarity, value: reward.values[rarityIndex] });
         }

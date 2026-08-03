@@ -26,13 +26,34 @@ export const TOILET_GEAR = [
         name: "Tracking Antenna",
         description: "Invisibility cannot fool it.",
         minLevel: 4
+    },
+    {
+        id: "wreckingBall",
+        icon: "🔨",
+        name: "Wrecking Ball",
+        description: "Physical catches smash through shields. Lasers do not.",
+        minLevel: 6
+    },
+    {
+        id: "ghost",
+        icon: "👻",
+        name: "Ghost Toilet",
+        description: "Passes through walls, but moves 25% slower.",
+        minLevel: 8
+    },
+    {
+        id: "overflowed",
+        icon: "🌊",
+        name: "Overflowed Toilet",
+        description: "Wet floors give every move a 25% chance to slide one extra tile.",
+        minLevel: 6
     }
 ];
 
 export function rollToiletGear(level) {
     if (level < 2) return [];
     const available = TOILET_GEAR.filter(item => item.minLevel <= level);
-    const count = level >= 8 ? 2 : 1;
+    const count = 1 + Math.floor(level / 5);
     const result = [];
     while (result.length < count && available.length) {
         result.push(available.splice(Math.floor(Math.random() * available.length), 1)[0]);

@@ -276,8 +276,13 @@ export class Renderer {
     }
 
     drawFloor(game) {
+        const wetFloor =
+            game.enemyGear?.some(
+                gear => gear.id === "overflowed"
+            );
+
         this.ctx.fillStyle =
-            "#151414";
+            wetFloor ? "#101c24" : "#151414";
 
         this.ctx.fillRect(
             0,
@@ -321,12 +326,16 @@ export class Renderer {
 
                 g.addColorStop(
                     0,
-                    "#3b332a"
+                    wetFloor
+                        ? "#31566b"
+                        : "#3b332a"
                 );
 
                 g.addColorStop(
                     1,
-                    "#262019"
+                    wetFloor
+                        ? "#172d3a"
+                        : "#262019"
                 );
 
                 this.ctx.fillStyle =
@@ -755,7 +764,7 @@ export class Renderer {
         const cy =
             t.y + t.h / 2;
 
-        if (game.shieldActive) {
+        if (game.shieldCharges > 0) {
             this.ctx.save();
 
             this.ctx.strokeStyle =
@@ -821,6 +830,24 @@ export class Renderer {
             return;
         }
 
+        const flashing =
+            e.freezeTimer > 0 ||
+            e.slowTimer > 0;
+
+        const flashAlpha =
+            flashing
+                ? 0.3 +
+                  0.7 *
+                      (
+                          0.5 +
+                          0.5 *
+                              Math.sin(
+                                  performance.now() *
+                                      0.025
+                              )
+                      )
+                : 1;
+
         this.drawEntity(
             game,
             e,
@@ -831,7 +858,8 @@ export class Renderer {
                 performance.now() *
                     0.01
             ) * 2,
-            1
+            1,
+            flashAlpha
         );
 
         if (
@@ -861,6 +889,30 @@ export class Renderer {
                 t.y + 5
             );
 
+            this.ctx.restore();
+        }
+
+        if (
+            e.confusedTimer > 0
+        ) {
+            const t =
+                this.tile(
+                    game,
+                    e.x,
+                    e.y
+                );
+
+            this.ctx.save();
+            this.ctx.font =
+                `${Math.max(22, t.h * 0.5)}px system-ui`;
+            this.ctx.textAlign = "center";
+            this.ctx.shadowColor = "#ffe06a";
+            this.ctx.shadowBlur = 10;
+            this.ctx.fillText(
+                "❓",
+                t.x + t.w / 2,
+                t.y + 5
+            );
             this.ctx.restore();
         }
     }

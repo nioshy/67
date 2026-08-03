@@ -13,8 +13,11 @@ export class Enemy {
         this.moving = false;
 
         this.freezeTimer = 0;
+        this.confusedTimer = 0;
         this.slowTimer = 0;
         this.slowMultiplier = 1;
+        this.gearSpeedMultiplier = 1;
+        this.ghostMode = false;
 
         this.image = new Image();
         this.image.src = "./assets/toilet.png";
@@ -85,14 +88,25 @@ export class Enemy {
 
     resetEffects() {
         this.freezeTimer = 0;
+        this.confusedTimer = 0;
         this.slowTimer = 0;
         this.slowMultiplier = 1;
+        this.gearSpeedMultiplier = 1;
+        this.ghostMode = false;
     }
 
     freeze(duration = 3) {
         this.freezeTimer =
             Math.max(
                 this.freezeTimer,
+                duration
+            );
+    }
+
+    confuse(duration = 1) {
+        this.confusedTimer =
+            Math.max(
+                this.confusedTimer,
                 duration
             );
     }
@@ -111,11 +125,33 @@ export class Enemy {
             multiplier;
     }
 
+    isHarmless() {
+        return (
+            this.freezeTimer > 0 ||
+            this.slowTimer > 0
+        );
+    }
+
     update(
         deltaTime,
         maze,
         player
     ) {
+        /*
+         * Confused by Napoleon's
+         * Sneaky step.
+         */
+        if (this.confusedTimer > 0) {
+            this.confusedTimer -=
+                deltaTime;
+
+            if (this.confusedTimer < 0) {
+                this.confusedTimer = 0;
+            }
+
+            return;
+        }
+
         /*
          * Frozen toilet.
          */
@@ -161,6 +197,15 @@ export class Enemy {
                     this.personality
                         .maxSpeed
                 );
+        }
+
+        if (this.ghostMode) {
+            this.#advanceGhost(
+                deltaTime,
+                player
+            );
+
+            return;
         }
 
         if (this.moving) {
@@ -220,7 +265,8 @@ export class Enemy {
 
         const effectiveSpeed =
             this.speed *
-            this.slowMultiplier;
+            this.slowMultiplier *
+            this.gearSpeedMultiplier;
 
         const movement =
             Math.min(
@@ -237,6 +283,31 @@ export class Enemy {
         this.y +=
             (dy / distance) *
             movement;
+    }
+
+    #advanceGhost(deltaTime, player) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.hypot(dx, dy);
+
+        this.targetX = player.x;
+        this.targetY = player.y;
+        this.moving = distance >= 0.01;
+
+        if (!this.moving) {
+            return;
+        }
+
+        const movement = Math.min(
+            this.speed *
+                this.slowMultiplier *
+                this.gearSpeedMultiplier *
+                deltaTime,
+            distance
+        );
+
+        this.x += dx / distance * movement;
+        this.y += dy / distance * movement;
     }
 
     #findNextStep(

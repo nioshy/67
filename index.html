@@ -84,7 +84,17 @@
             </div>
         </header>
 
+        <div class="play-area">
+
         <div class="canvas-container">
+
+            <div id="character-selection" class="character-selection hidden">
+                <div class="character-selection-panel">
+                    <h2>CHOOSE YOUR CHARACTER</h2>
+                    <p>Your character stays with you until the run ends.</p>
+                    <div id="character-choices" class="character-choices"></div>
+                </div>
+            </div>
 
             <canvas
                 id="game"
@@ -148,6 +158,8 @@
                         id="unlock-message"
                         class="unlock-message hidden"
                     ></p>
+
+                    <img id="victory-character-image" class="victory-character-image hidden" alt="Victorious character">
 
                     <button id="restart-button">
                         Play Again
@@ -230,6 +242,10 @@
 
                 </div>
             </div>
+
+        </div>
+
+        <aside id="run-stats" class="run-stats" aria-label="Current run statistics"></aside>
 
         </div>
 

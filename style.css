@@ -58,9 +58,52 @@ button {
    ========================================================= */
 
 .game-container {
-    width: min(100%, 1050px);
+    width: min(100%, 1320px);
     margin: 0 auto;
 }
+
+.play-area {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 245px;
+    align-items: start;
+    gap: 14px;
+}
+
+.character-selection {
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    overflow: auto;
+    padding: 16px;
+    color: white;
+    background: rgba(4, 7, 12, .96);
+}
+.character-selection-panel { width: min(920px, 100%); margin: 0 auto; text-align: center; }
+.character-selection-panel h2 { margin: 0; color: #ffe06a; font-size: clamp(22px, 4vw, 36px); }
+.character-selection-panel > p { margin: 4px 0 14px; color: #b9c6d4; }
+.character-choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.character-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    padding: 9px;
+    overflow: hidden;
+    border: 3px solid #405064;
+    border-radius: 15px;
+    color: white;
+    background: linear-gradient(#1c2936, #0d141c);
+    text-align: left;
+    box-shadow: 0 6px 0 #030508;
+}
+.character-card:hover { border-color: #ffe06a; transform: translateY(-3px); }
+.character-card img { width: 100%; height: 145px; border-radius: 9px; object-fit: contain; background: #0a0f15; }
+.character-name { margin-top: 7px; color: #ffe06a; font-size: 20px; font-weight: 900; }
+.character-ability { color: #7fd4ff; font-size: 12px; font-weight: 900; text-transform: uppercase; }
+.character-tagline { min-height: 49px; margin: 6px 0; color: #dce4ec; font-size: 11px; }
+.character-stats { display: grid; gap: 2px; margin-bottom: 8px; color: #aee8b4; font-size: 10px; font-weight: 700; }
+.character-select-label { margin-top: auto; padding: 7px 4px; border-radius: 7px; color: #171000; background: #ffe06a; text-align: center; font-size: 10px; font-weight: 900; }
+.victory-character-image { display: block; width: min(180px, 48%); max-height: 160px; margin: 10px auto; object-fit: contain; }
 
 header {
     display: flex;
@@ -224,6 +267,7 @@ canvas {
 
     font-size: 17px;
     font-weight: 600;
+    white-space: pre-line;
 }
 
 
@@ -1411,9 +1455,59 @@ button:active {
 .reward-rarity { display: block; margin: 8px 0; color: var(--rarity); font-weight: 900; text-transform: uppercase; }
 .reward-name { display: block; margin-bottom: 8px; font-size: 19px; font-weight: 900; }
 .reward-description { display: block; color: #d8dee7; font-size: 13px; }
+.reward-stat {
+    display: block;
+    margin-top: 14px;
+    padding: 8px;
+    border-radius: 9px;
+    color: #081018;
+    background: var(--rarity);
+    font-size: 14px;
+    font-weight: 900;
+}
+.reward-total { display: block; margin-top: 4px; font-size: 11px; opacity: .8; }
 
 @media (max-width: 650px) {
     .reward-choices { grid-template-columns: 1fr; gap: 8px; }
     .reward-card { min-height: 0; padding: 10px; }
     .reward-icon { display: inline; margin-right: 8px; font-size: 28px; }
+}
+.run-stats {
+    position: sticky;
+    top: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #59697a;
+    border-radius: 13px;
+    color: #f4f7fb;
+    background: rgba(7, 12, 18, .88);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .45);
+    font-size: 12px;
+    pointer-events: none;
+}
+.run-stats-title { color: #ffe06a; font-size: 14px; font-weight: 900; letter-spacing: .08em; }
+.run-character { margin-bottom: 5px; color: #7fd4ff; font-size: 11px; font-weight: 900; text-transform: uppercase; }
+.run-character-perk { margin-bottom: 8px; color: #aee8b4; font-size: 9px; line-height: 1.35; }
+.run-stats-subtitle { margin: 2px 0 7px; color: #aebccc; font-size: 10px; }
+.run-stat { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
+.run-stat-value { color: #fff; font-weight: 900; white-space: nowrap; }
+.run-stat-empty { color: #91a0af; font-style: italic; }
+.run-stat-stack { color: #7fd4ff; }
+
+@media (pointer: coarse) and (orientation: landscape) {
+    .play-area { grid-template-columns: minmax(0, 1fr) 185px; gap: 6px; }
+    .run-stats { top: 5px; width: 100%; padding: 6px 8px; font-size: 10px; }
+    .run-stats-title { font-size: 11px; }
+    .run-stats-subtitle { margin-bottom: 3px; font-size: 8px; }
+    .run-stat { padding: 1px 0; }
+}
+
+@media (max-width: 760px) and (orientation: portrait) {
+    .play-area { grid-template-columns: 1fr; }
+    .run-stats { position: static; }
+}
+
+@media (max-width: 760px) {
+    .character-choices { grid-template-columns: repeat(2, 1fr); }
+    .character-card img { height: 105px; }
 }

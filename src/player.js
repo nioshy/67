@@ -28,18 +28,29 @@ export class Player {
         this.speed = 10.5;
     }
 
-    move(dx, dy, maze) {
+    move(dx, dy, maze, maximumSteps = 1) {
         if (this.moving) {
             return;
         }
 
-        const nextX =
-            Math.round(this.x) + dx;
+        let nextX = Math.round(this.x);
+        let nextY = Math.round(this.y);
+        let movedSteps = 0;
 
-        const nextY =
-            Math.round(this.y) + dy;
+        for (let step = 0; step < maximumSteps; step++) {
+            const candidateX = nextX + dx;
+            const candidateY = nextY + dy;
 
-        if (!maze.isFloor(nextX, nextY)) {
+            if (!maze.isFloor(candidateX, candidateY)) {
+                break;
+            }
+
+            nextX = candidateX;
+            nextY = candidateY;
+            movedSteps += 1;
+        }
+
+        if (movedSteps === 0) {
             return;
         }
 

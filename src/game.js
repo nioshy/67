@@ -5,6 +5,7 @@ import { Enemy } from "./enemy.js";
 import { Achievements } from "./achievements.js";
 import { RunSystem } from "./run-system.js";
 import { rollToiletGear } from "./toilet-gear.js";
+import { CHARACTERS } from "./characters.js";
 
 const $ = id =>
     document.getElementById(id);
@@ -94,6 +95,10 @@ const nextMazeButton =
 
 const rewardScreen = $("reward-screen");
 const rewardChoices = $("reward-choices");
+const runStats = $("run-stats");
+const characterSelection = $("character-selection");
+const characterChoices = $("character-choices");
+const victoryCharacterImage = $("victory-character-image");
 
 
 /* =========================================================
@@ -133,7 +138,7 @@ const game = {
     startTime: 0,
     elapsedTime: 0,
 
-    shieldActive: false,
+    shieldCharges: 0,
 
     invisible: false,
     invisibilityTimer: 0,
@@ -143,7 +148,9 @@ const game = {
     run,
     enemyGear: [],
     enemyStartDelay: 0,
-    laser: null
+    laser: null,
+    character: CHARACTERS[0],
+    lastPlayerStepKey: "1,1"
 };
 
 let previous =
@@ -612,12 +619,102 @@ function hasEnemyGear(id) {
     return game.enemyGear.some(item => item.id === id);
 }
 
+function rewardStackCount(id) {
+    return run.rewards.filter(reward => reward.id === id).length;
+}
+
+function formatRewardValue(reward, total = reward.value) {
+    const headStartMultiplier = game.character.headStartMultiplier || 1;
+    const formats = {
+        runner: value => `+${Math.round(value * 100)}% player speed`,
+        headStart: value => `+${(value * headStartMultiplier).toFixed(1)}s effective head start`,
+        shield: value => `+${Math.floor(value)} shield charge${value === 1 ? "" : "s"} per maze`,
+        goldenShield: value => `+${Math.floor(value)} shield charges per maze`,
+        carrotLuck: value => `+${Math.floor(value)} carrot${value === 1 ? "" : "s"} per victory`,
+        toiletSlow: value => `−${Math.round(value * 100)}% toilet speed`,
+        extraFreeze: value => `+${value.toFixed(1)}s Freeze Bomb duration`
+    };
+    return formats[reward.id](total);
+}
+
+function updateRunStats() {
+    const speed = Math.round(
+        (game.character.speedMultiplier * (1 + run.total("runner")) - 1) * 100
+    );
+    const headStart =
+        run.total("headStart") * (game.character.headStartMultiplier || 1);
+    const shieldStacks =
+        rewardStackCount("shield") + rewardStackCount("goldenShield");
+    const carrots = Math.floor(run.total("carrotLuck"));
+    const slow = Math.min(35, Math.round(run.total("toiletSlow") * 100));
+    const freeze = run.total("extraFreeze");
+    const rows = [
+        ["👟 Player speed", `${speed >= 0 ? "+" : ""}${speed}%`, rewardStackCount("runner")],
+        ["⏳ Head start", `${headStart.toFixed(1)}s`, rewardStackCount("headStart")],
+        ["🛡️ Shields", `${game.shieldCharges} ready`, shieldStacks],
+        ["🥕 Win bonus", `+${carrots}`, rewardStackCount("carrotLuck")],
+        ["🧻 Toilet speed", `−${slow}%`, rewardStackCount("toiletSlow")],
+        ["❄️ Freeze Bomb", `${(3 + freeze).toFixed(1)}s`, rewardStackCount("extraFreeze")]
+    ].filter(([, , stacks]) => stacks > 0);
+
+    runStats.innerHTML = `
+        <div class="run-character">${game.character.name} · ${game.character.ability}</div>
+        <div class="run-character-perk">${game.character.stats.join(" · ")}</div>
+        <div class="run-stats-title">RUN LEVEL ${run.level}</div>
+        <div class="run-stats-subtitle">${run.rewards.length} reward${run.rewards.length === 1 ? "" : "s"} stacked</div>
+        ${rows.length ? rows.map(([label, value, stacks]) => `
+            <div class="run-stat">
+                <span>${label}${stacks ? ` <span class="run-stat-stack">×${stacks}</span>` : ""}</span>
+                <span class="run-stat-value">${value}</span>
+            </div>
+        `).join("") : `<div class="run-stat-empty">Choose a reward after your first escape.</div>`}
+    `;
+}
+
+function renderCharacterChoices() {
+    characterChoices.innerHTML = "";
+
+    for (const character of CHARACTERS) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "character-card";
+        button.innerHTML = `
+            <img src="${character.portrait}" alt="${character.name}">
+            <span class="character-name">${character.name}</span>
+            <span class="character-ability">${character.ability}</span>
+            <span class="character-tagline">${character.tagline}</span>
+            <span class="character-stats">${character.stats.map(stat => `<span>${stat}</span>`).join("")}</span>
+            <span class="character-select-label">PLAY AS ${character.name.toUpperCase()}</span>
+        `;
+        button.addEventListener("click", () => selectCharacter(character));
+        characterChoices.append(button);
+    }
+}
+
+function showCharacterSelection() {
+    game.state = "character-select";
+    overlay.classList.add("hidden");
+    toiletPersonality.classList.add("hidden");
+    rabbitShop.classList.add("hidden");
+    rewardScreen.classList.add("hidden");
+    characterSelection.classList.remove("hidden");
+    renderCharacterChoices();
+    updatePowerupUI();
+}
+
+function selectCharacter(character) {
+    game.character = character;
+    game.player.image.src = character.portrait;
+    characterSelection.classList.add("hidden");
+    generateLevel();
+}
+
 function showRewardChoices() {
     game.state = "reward";
     overlay.classList.add("hidden");
     rewardChoices.innerHTML = "";
 
-    for (const reward of run.createChoices()) {
+    for (const reward of run.createChoices(3, game.character.lucky === true)) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "reward-card";
@@ -627,9 +724,14 @@ function showRewardChoices() {
             <span class="reward-rarity">${reward.rarity.name}</span>
             <span class="reward-name">${reward.name}</span>
             <span class="reward-description">${reward.description}</span>
+            <span class="reward-stat">
+                ${formatRewardValue(reward)}
+                <span class="reward-total">After picking: ${formatRewardValue(reward, run.total(reward.id) + reward.value)}</span>
+            </span>
         `;
         button.addEventListener("click", () => {
             run.choose(reward);
+            updateRunStats();
             rewardScreen.classList.add("hidden");
             restart.textContent = "Play Again";
             openRabbitShop(`${reward.icon} ${reward.name} added for this run!`);
@@ -675,8 +777,9 @@ function updateLaser(deltaTime) {
             : Math.abs(game.player.x - game.laser.coordinate) < 0.32;
 
         if (hit) {
-            if (game.shieldActive) {
-                game.shieldActive = false;
+            if (game.shieldCharges > 0) {
+                game.shieldCharges -= 1;
+                updateRunStats();
             } else {
                 showResult("Zapped!", "The toilet's laser caught the 67 Kid.", true);
             }
@@ -685,6 +788,28 @@ function updateLaser(deltaTime) {
     }
 
     game.laser = { phase: "cooldown", timer: 4.2, cooldown: 0 };
+}
+
+function checkCharacterStepPerk() {
+    if (game.player.moving) return;
+
+    const stepKey = `${Math.round(game.player.x)},${Math.round(game.player.y)}`;
+    if (stepKey === game.lastPlayerStepKey) return;
+
+    game.lastPlayerStepKey = stepKey;
+
+    if (
+        game.character.sneakyChance &&
+        Math.random() < game.character.sneakyChance
+    ) {
+        game.invisible = true;
+        game.invisibilityTimer = Math.max(game.invisibilityTimer, 1);
+        game.lastSeenPosition = {
+            x: Math.round(game.player.x),
+            y: Math.round(game.player.y)
+        };
+        game.enemy.confuse(1);
+    }
 }
 
 
@@ -769,8 +894,7 @@ function placeCarrot() {
 function resetRunEffects() {
     game.bananas = [];
 
-    game.shieldActive =
-        false;
+    game.shieldCharges = 0;
 
     game.invisible =
         false;
@@ -788,15 +912,25 @@ function resetRunEffects() {
 
     game.enemy.resetEffects();
 
-    game.enemy.speed *=
+    game.enemy.gearSpeedMultiplier =
         (hasEnemyGear("turboTank") ? 1.12 : 1) *
+        (hasEnemyGear("ghost") ? 0.75 : 1) *
         (1 - Math.min(0.35, run.total("toiletSlow")));
 
-    game.player.baseSpeed = 7 * (1 + run.total("runner"));
+    game.enemy.ghostMode = hasEnemyGear("ghost");
+
+    game.player.baseSpeed =
+        7 * game.character.speedMultiplier * (1 + run.total("runner"));
     game.player.speed = game.player.baseSpeed;
-    game.shieldActive = run.total("shield") > 0;
-    game.enemyStartDelay = run.total("headStart");
+    game.shieldCharges = Math.floor(
+        run.total("shield") + run.total("goldenShield")
+    );
+    game.enemyStartDelay =
+        run.total("headStart") * (game.character.headStartMultiplier || 1);
     game.laser = null;
+    game.lastPlayerStepKey = "1,1";
+
+    updateRunStats();
 
     hideTeleportPrompt();
 }
@@ -881,21 +1015,24 @@ function generateLevel() {
             .personality
             .name;
 
-    personalityDescription.textContent =
-        game.enemy
-            .personality
-            .description ||
-        "Can you escape before it catches you?";
+    const personalityLines = [
+        game.enemy.personality.description ||
+            "Can you escape before it catches you?",
+        `Run level ${run.level}.`
+    ];
 
     if (game.enemyGear.length) {
-        personalityDescription.textContent +=
-            ` Gear: ${game.enemyGear.map(item => `${item.icon} ${item.name}`).join(" + ")}. ` +
-            game.enemyGear.map(item => item.description).join(" ");
+        personalityLines.push(
+            "EQUIPMENT:",
+            ...game.enemyGear.map(
+                item => `${item.icon} ${item.name} — ${item.description}`
+            )
+        );
     } else {
-        personalityDescription.textContent += " No gear this time.";
+        personalityLines.push("No equipment this time.");
     }
 
-    personalityDescription.textContent += ` Run level ${run.level}.`;
+    personalityDescription.textContent = personalityLines.join("\n");
 
     toiletPersonality.classList.remove(
         "hidden"
@@ -1014,17 +1151,18 @@ function usePowerup(
         "shield"
     ) {
         if (
-            game.shieldActive
+            game.shieldCharges > 0
         ) {
             return;
         }
 
-        game.shieldActive =
-            true;
+        game.shieldCharges += 1;
 
         achievements.useItem(
             itemId
         );
+
+        updateRunStats();
     }
 
     else if (
@@ -1325,6 +1463,8 @@ function showResult(
     game.state =
         "finished";
 
+    victoryCharacterImage.classList.add("hidden");
+
     hideTeleportPrompt();
 
     updatePowerupUI();
@@ -1338,6 +1478,8 @@ function showResult(
 
         run.reset();
         game.enemyGear = [];
+        game.shieldCharges = 0;
+        updateRunStats();
 
         updateStreakUI();
 
@@ -1621,6 +1763,10 @@ function win() {
     game.state =
         "victory";
 
+    victoryCharacterImage.src = game.character.victory;
+    victoryCharacterImage.alt = `${game.character.name} celebrating`;
+    victoryCharacterImage.classList.remove("hidden");
+
     title.textContent =
         "You Escaped!";
 
@@ -1731,6 +1877,8 @@ function update(
     game.player.update(
         deltaTime
     );
+
+    checkCharacterStepPerk();
 
     let toiletTarget =
         game.player;
@@ -1869,18 +2017,21 @@ function update(
 
     if (
         enemyDistance <
-        0.55
+        0.55 &&
+        !game.enemy.isHarmless()
     ) {
         if (
-            game.shieldActive
+            game.shieldCharges > 0 &&
+            !hasEnemyGear("wreckingBall")
         ) {
-            game.shieldActive =
-                false;
+            game.shieldCharges -= 1;
+
+            updateRunStats();
 
             resetEntity(
                 game.enemy,
-                game.exit.x,
-                game.exit.y
+                1,
+                1
             );
 
             renderer.triggerShake(
@@ -1964,7 +2115,10 @@ function move(direction) {
         game.player.move(
             movement[0],
             movement[1],
-            maze
+            maze,
+            hasEnemyGear("overflowed") && Math.random() < 0.25
+                ? 2
+                : 1
         );
     }
 }
@@ -2053,7 +2207,14 @@ addEventListener(
         if (
             key === "r"
         ) {
-            generateLevel();
+            if (achievements.currentStreak > 0) {
+                achievements.recordDefeat();
+                updateStreakUI();
+            }
+            run.reset();
+            game.shieldCharges = 0;
+            updateRunStats();
+            showCharacterSelection();
         }
 
         if (
@@ -2165,7 +2326,7 @@ restart.onclick =
          * After being caught:
          * start another maze normally.
          */
-        generateLevel();
+        showCharacterSelection();
     };
 
 
@@ -2344,6 +2505,7 @@ updateCarrots();
 updateStreakUI();
 
 generateLevel();
+showCharacterSelection();
 
 requestAnimationFrame(
     loop
